@@ -1,0 +1,4 @@
+node_modules/
+dist/
+app/e2e/*.png
+app/e2e/*.json

@@ -1,0 +1,12 @@
+import { chromium } from 'playwright-core'
+const b = await chromium.launch({ channel: 'msedge' })
+const p = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage()
+await p.goto('http://localhost:4173/#/recetas')
+await p.getByRole('button', { name: 'Crear nuevo' }).click()
+await p.waitForTimeout(400)
+console.log('menu items:', await p.getByRole('menuitem').allInnerTexts())
+await p.screenshot({ path: 'e2e/mobile-menu.png' })
+await p.getByRole('menuitem', { name: 'Nuevo cliente' }).click()
+console.log('dialog:', await p.getByRole('dialog').getByRole('heading').innerText())
+await p.screenshot({ path: 'e2e/mobile-sheet.png' })
+await b.close()
