@@ -3,7 +3,7 @@ import { orderTotals, paymentStatus, STATUS_LABEL, PAYMENT_LABEL } from './order
 
 const BOM = '﻿'
 
-function cell(v: unknown, sep: string): string {
+export function cell(v: unknown, sep: string): string {
   let s = v === null || v === undefined ? '' : String(v)
   // Evita inyección de fórmulas en Excel
   if (/^[=+\-@]/.test(s) && typeof v === 'string') s = "'" + s
@@ -13,6 +13,11 @@ function cell(v: unknown, sep: string): string {
 /** UTF-8 con BOM (Excel muestra bien los acentos). Separador "," (México) o ";" (configuración regional europea). */
 export function toCsv(headers: string[], rows: unknown[][], sep: ',' | ';' = ','): string {
   return BOM + [headers, ...rows].map((r) => r.map((c) => cell(c, sep)).join(sep)).join('\r\n') + '\r\n'
+}
+
+/** CSV de varias secciones: una sola cabecera BOM, filas de ancho libre. */
+export function rowsToCsv(rows: unknown[][], sep: ',' | ';' = ','): string {
+  return BOM + rows.map((r) => r.map((c) => cell(c, sep)).join(sep)).join('\r\n') + '\r\n'
 }
 
 const pesos = (c: number) => (c / 100).toFixed(2)

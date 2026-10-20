@@ -92,6 +92,7 @@ export function Ajustes({ data }: { data: Data }) {
           {[['ingredientes.csv', 'Ingredientes'], ['compras.csv', 'Historial de compras'], ['recetas.csv', 'Recetas'], ['recetas_ingredientes.csv', 'Ingredientes de recetas'], ['pedidos.csv', 'Pedidos'], ['pedidos_lineas.csv', 'Líneas de pedido'], ['pagos.csv', 'Pagos'], ['clientes.csv', 'Clientes'], ['gastos.csv', 'Gastos']].map(([n, l]) => <button key={n} className="btn" onClick={() => exportCsv(n)}>{l}</button>)}
         </div>
         <button className="btn primary" onClick={() => exportCsv('todo')}>Exportar todo</button>
+        <p className="small">¿Quieres un reporte de ventas, costos y ganancias por fechas? Ve a <Link to="/finanzas">Finanzas → Exportar reporte</Link> (PDF o CSV).</p>
         <p className="small muted">UTF-8 con BOM (acentos correctos en Excel). Los archivos comparten identificadores (<span className="kbd">id</span>, <span className="kbd">receta_id</span>, <span className="kbd">pedido_id</span>…) para poder relacionarlos. Los datos de demostración no se exportan.</p>
       </section>
 

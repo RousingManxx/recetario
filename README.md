@@ -92,19 +92,28 @@ Criterios (también visibles en la app, «¿Cómo se calcula?»):
 - Avisos de datos incompletos: sin gastos registrados, productos sin costo, recetas sin mano de obra, precios en $0.
 - Cambio de modelo: `OrderLine.costShares` (opcional) congela el desglose de costos al confirmar. Los pedidos anteriores aparecen como «Sin desglose»; no se requiere migración y los respaldos siguen siendo v1.
 
+### Exportar reportes (Finanzas → Exportar reporte)
+Tarjeta al final de Finanzas: fechas Desde/Hasta (por defecto, el periodo elegido), filtros de estado/categoría/producto, agrupación,
+formato **PDF** o **CSV** y opción de incluir detalle (pedidos, cobros, gastos y compras). Una sola estructura (`domain/report.ts`) alimenta
+ambos formatos, con las mismas cifras de la pantalla. El CSV es de una sola hoja con secciones (resumen con comparación, serie, distribución de
+costos, rentabilidad por receta, pedidos y cobros, flujo de caja, detalle y criterios); UTF-8 con BOM, importes en MXN con 2 decimales.
+El PDF se genera en el dispositivo sin librerías (`domain/reportPdf.ts`: Helvetica WinAnsi + gráficas vectoriales) y se descarga como archivo;
+no usa «Imprimir», que no es fiable en PWAs de iOS. Con filtro de producto/categoría se omiten cobros, gastos y flujo de caja.
+
 ## Verificación realizada
 | Qué | Resultado |
 |---|---|
-| Pruebas unitarias y de persistencia (`npm test`) | 58 pasan (incluye 21 de finanzas; probadas en 3 zonas horarias) |
+| Pruebas unitarias y de persistencia (`npm test`) | 76 pasan (21 de finanzas y 18 de reportes; probadas en 3 zonas horarias) |
 | Build de producción + service worker | OK |
 | E2E en Edge (móvil 390 px y escritorio 1280 px) | 21 verificaciones: onboarding → ingredientes → receta ($102.00, precio $255.00) → pedido, anticipo y saldo → costo histórico congelado → resumen → JSON/CSV → borrar todo → restaurar → archivo inválido → persistencia tras recargar; sin errores de consola |
 | E2E de Finanzas (`node e2e/finanzas.mjs`) | Cifras = Resumen, anticipo sin doble conteo, tooltips/teclado, filtros, periodos, detalle, estado vacío, 6 pestañas a 360 y 390 px, claro/oscuro |
+| E2E de reportes (`node e2e/reporte.mjs`) | PDF y CSV descargados desde la app, cifras CSV = pantalla, fechas inválidas, filtros; PDF renderizado y revisado visualmente |
 | Safari iOS / iPhone físico / instalación PWA | **No probado** |
 | Accesibilidad | Parcial: etiquetas, foco, `aria`, contraste cuidado; **sin auditoría formal** (axe/VoiceOver) |
 | Rendimiento | Bundle 140 kB gzip; sin medición en dispositivo |
 
 ## Pendiente / limitaciones conocidas
-- Finanzas: sin exportación de reportes, sin presupuestos/metas ni impuestos; las compras de ingredientes no se enlazan al estado de pago al proveedor.
+- Finanzas: sin presupuestos/metas ni impuestos; las compras de ingredientes no se enlazan al estado de pago al proveedor.
 - Sincronización entre dispositivos; app nativa (xtool); Liquid Glass nativo de iOS.
 - Fotografía de recetas, sub-recetas (receta dentro de receta), inventario con descuento automático por pedido
   (hay campos de existencia/mínimo/caducidad pero **sin** descuento ni alertas de stock), reportes de rentabilidad por periodo.

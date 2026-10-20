@@ -81,6 +81,9 @@ function lineFigs(o: Order, c: Ctx, f: Filters): LineFig[] {
   })
 }
 
+/** ¿El pedido tiene al menos una línea que cumple el filtro de producto/categoría? (sin filtro: siempre). */
+export function orderMatches(o: Order, c: Ctx, f: Filters): boolean { return !hasLineFilter(f) || lineFigs(o, c, f).length > 0 }
+
 export function saleOrdersIn(c: Ctx, r: Range, f: Filters): Order[] {
   return c.orders.filter((o) => isSale(o) && statusOk(o, f.status) && inRange(saleDate(o), r))
 }

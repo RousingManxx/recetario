@@ -1,15 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   buildSeries, computeMetrics, costDistribution, dataWarnings, defaultGranularity, delta, movementsIn, NO_FILTERS, ordersAndCollections,
   PERIOD_LABEL, productRows, receivables, resolveRange, saleOrdersIn, type Filters, type Granularity, type PeriodKey, type StatusGroup,
 } from '../domain/finance'
 import { formatMXN, formatNum } from '../domain/money'
+import { buildReport, reportCsv, reportFileName } from '../domain/report'
+import { reportPdf } from '../domain/reportPdf'
 import { PAYMENT_LABEL, paymentStatus, STATUS_LABEL, orderTotals } from '../domain/orders'
 import type { Order } from '../domain/types'
 import { Donut, HBars, Legend, MarginChart, TrendChart } from '../ui/charts'
 import { useOpen } from '../ui/create'
-import { fmtDate, todayISO, type Data } from '../ui/data'
+import { download, fmtDate, todayISO, type Data } from '../ui/data'
 import { Empty, Seg, Sheet, useUi } from '../ui/ui'
 
 const PERIODS: PeriodKey[] = ['hoy', '7d', 'mes', 'mes_ant', '3m', 'anio', 'custom']
@@ -38,6 +40,11 @@ export function Finanzas({ data }: { data: Data }) {
   const [recMetric, setRecMetric] = useState<'margen' | 'ganancia'>('ganancia')
   const [prodMetric, setProdMetric] = useState<'cantidad' | 'ingresos'>('ingresos')
   const [drill, setDrill] = useState<Drill>(null)
+  const [exp, setExp] = useState({ from: '', to: '' })
+  const [fmt, setFmt] = useState<'csv' | 'pdf'>('pdf')
+  const [csvSep, setCsvSep] = useState<',' | ';'>(',')
+  const [detail, setDetail] = useState(true)
+  const [exporting, setExporting] = useState(false)
 
   const ctx = useMemo(() => ({ orders: data.orders, expenses: data.expenses, purchases: data.purchases, recipes: data.recipes }), [data.orders, data.expenses, data.purchases, data.recipes])
   const { range, prev, days } = useMemo(() => resolveRange(period, new Date(), custom), [period, custom])
@@ -51,6 +58,22 @@ export function Finanzas({ data }: { data: Data }) {
   const oc = useMemo(() => ordersAndCollections(ctx, range, f), [ctx, range, f])
   const warnings = useMemo(() => dataWarnings(ctx, range, f, m), [ctx, range, f, m])
   const mv = useMemo(() => movementsIn(ctx, range, f), [ctx, range, f])
+
+  const ymdLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  useEffect(() => { setExp({ from: ymdLocal(range.from), to: ymdLocal(new Date(range.to.getTime() - 1)) }) }, [range])
+  const expBad = !exp.from || !exp.to || exp.to < exp.from
+  const doExport = async () => {
+    if (expBad) return ui.toast('Revisa las fechas: «Hasta» no puede ser anterior a «Desde».', true)
+    setExporting(true)
+    try {
+      const rep = buildReport({ ctx, from: exp.from, to: exp.to, filters: f, granularity: gran, businessName: data.settings.businessName, includeDetail: detail })
+      const name = reportFileName(rep, fmt)
+      if (fmt === 'csv') download(name, reportCsv(rep, csvSep), 'text/csv;charset=utf-8')
+      else download(name, new Blob([reportPdf(rep) as BlobPart], { type: 'application/pdf' }))
+      ui.toast(`Reporte descargado: ${name}`)
+    } catch (e) { ui.toast('No se pudo generar el reporte: ' + (e as Error).message, true) }
+    setExporting(false)
+  }
 
   const cats = [...new Set(data.recipes.map((r) => r.category))].sort()
   const anyData = data.orders.some((o) => o.status !== 'cotizacion') || data.expenses.length > 0
@@ -214,6 +237,31 @@ export function Finanzas({ data }: { data: Data }) {
           <li><b>Límites:</b> no incluye impuestos ni gastos que no hayas registrado; por eso la ganancia neta es una estimación.</li>
         </ul>
       </details>
+
+      <section className="fcard" aria-labelledby="t8">
+        <h2 id="t8">Exportar reporte</h2>
+        <p className="small muted">Elige las fechas y los filtros del reporte. Las cifras son las mismas que ves en pantalla.</p>
+        <div className="grid2">
+          <label className="f">Desde<input type="date" value={exp.from} max={exp.to || undefined} onChange={(e) => setExp({ ...exp, from: e.target.value })} aria-invalid={expBad || undefined} /></label>
+          <label className="f">Hasta<input type="date" value={exp.to} min={exp.from || undefined} onChange={(e) => setExp({ ...exp, to: e.target.value })} aria-invalid={expBad || undefined} /></label>
+        </div>
+        {expBad && <div className="err" role="alert">Las fechas no son válidas: «Hasta» debe ser igual o posterior a «Desde».</div>}
+        <div className="grid2">
+          <label className="f">Pedidos<select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as StatusGroup })}><option value="todos">Todos los confirmados</option><option value="por_entregar">Por entregar</option><option value="entregados">Entregados</option></select></label>
+          <label className="f">Categoría<select value={f.category} onChange={(e) => setF({ ...f, category: e.target.value, recipeId: '' })}><option value="">Todas</option>{cats.map((c) => <option key={c}>{c}</option>)}</select></label>
+          <label className="f">Producto<select value={f.recipeId} onChange={(e) => setF({ ...f, recipeId: e.target.value })}><option value="">Todos</option>{data.recipes.filter((r) => !f.category || r.category === f.category).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
+          <label className="f">Agrupar por<select value={gran} onChange={(e) => setGran(e.target.value as 'auto' | Granularity)}><option value="auto">Automático</option><option value="dia">Día</option><option value="semana">Semana</option><option value="mes">Mes</option></select></label>
+        </div>
+        <div className="stack" style={{ gap: 6 }}>
+          <span className="small muted">Formato</span>
+          <Seg value={fmt} onChange={setFmt} options={[['pdf', 'PDF'], ['csv', 'CSV (Excel)']]} />
+        </div>
+        {fmt === 'csv' && <label className="f">Separador<select value={csvSep} onChange={(e) => setCsvSep(e.target.value as ',' | ';')}><option value=",">Coma (Excel en México / inglés)</option><option value=";">Punto y coma (Excel con configuración europea)</option></select></label>}
+        <label className="row"><input type="checkbox" style={{ width: 22, minHeight: 22 }} checked={detail} onChange={(e) => setDetail(e.target.checked)} /> Incluir detalle (pedidos, cobros, gastos y compras)</label>
+        {(f.category || f.recipeId) && <p className="small muted">Con filtro de producto o categoría el reporte solo incluye ventas, costos y los pedidos de ese producto; cobros, gastos y flujo de caja se omiten.</p>}
+        <button className="btn primary" onClick={doExport} disabled={exporting || expBad}>{exporting ? 'Generando…' : `Descargar ${fmt === 'pdf' ? 'PDF' : 'CSV'}`}</button>
+        <p className="small muted">El archivo se genera en tu dispositivo; no se sube a ningún servidor. Los datos de demostración, si están cargados, se incluyen y se indica en el reporte.</p>
+      </section>
 
       {drill && <DrillSheet kind={drill} onClose={() => setDrill(null)} sold={saleOrdersIn(ctx, range, f)} mv={mv} rec={rec.orders} advances={mv.payments.filter((x) => x.p.amountCents > 0 && x.o.status !== 'entregado' && x.o.status !== 'cancelado')} onOrder={(o) => open({ k: 'order', v: o })} onExpense={(e) => open({ k: 'expense', v: e })} />}
     </div>
