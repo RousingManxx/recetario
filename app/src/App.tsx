@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { Ajustes } from './pages/Ajustes'
+import { Finanzas } from './pages/Finanzas'
 import { Inicio } from './pages/Inicio'
 import { Ingredientes } from './pages/Ingredientes'
 import { Pedidos } from './pages/Pedidos'
@@ -10,7 +11,7 @@ import { SheetHost, useOpen } from './ui/create'
 import { useData } from './ui/data'
 import { Icon, UiProvider } from './ui/ui'
 
-const TABS = [['/', 'Resumen', 'home'], ['/recetas', 'Recetas', 'cake'], ['/ingredientes', 'Ingredientes', 'jar'], ['/pedidos', 'Pedidos', 'bag'], ['/ajustes', 'Ajustes', 'gear']] as const
+const TABS = [['/', 'Resumen', 'home'], ['/recetas', 'Recetas', 'cake'], ['/ingredientes', 'Ingredientes', 'jar'], ['/pedidos', 'Pedidos', 'bag'], ['/finanzas', 'Finanzas', 'chart'], ['/ajustes', 'Ajustes', 'gear']] as const
 
 function PlusMenu() {
   const [openMenu, setOpenMenu] = useState(false)
@@ -59,7 +60,7 @@ function Shell() {
       <div className="topbar"><PlusMenu /><div className="title">{title}</div></div>
       <div className="shell">
         <nav className="tabbar glass" aria-label="Navegación principal">
-          {TABS.map(([to, l, ic]) => <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><Icon n={ic} size={22} />{l}</NavLink>)}
+          {TABS.map(([to, l, ic]) => <NavLink key={to} to={to} end={to === '/'} aria-label={l} className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><Icon n={ic} size={22} /><span className="full">{l}</span><span className="short" aria-hidden="true">{l === 'Ingredientes' ? 'Ingred.' : l}</span></NavLink>)}
         </nav>
         <main className="main">
           <div className="page" key={loc.pathname}>
@@ -68,6 +69,7 @@ function Shell() {
             <Route path="/recetas" element={<Recetas data={data} />} />
             <Route path="/ingredientes" element={<Ingredientes data={data} />} />
             <Route path="/pedidos" element={<Pedidos data={data} />} />
+            <Route path="/finanzas" element={<Finanzas data={data} />} />
             <Route path="/ajustes" element={<Ajustes data={data} />} />
             <Route path="/inicio" element={<Inicio data={data} />} />
             <Route path="*" element={<Resumen data={data} />} />

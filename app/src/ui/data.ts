@@ -1,11 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo } from 'react'
 import { db, defaultSettings } from '../db/db'
-import type { Customer, Expense, Ingredient, Order, Recipe, Settings } from '../domain/types'
+import type { Customer, Expense, Ingredient, Order, Purchase, Recipe, Settings } from '../domain/types'
 
 export interface Data {
   ready: boolean
-  ingredients: Ingredient[]; recipes: Recipe[]; customers: Customer[]; orders: Order[]; expenses: Expense[]
+  ingredients: Ingredient[]; recipes: Recipe[]; customers: Customer[]; orders: Order[]; expenses: Expense[]; purchases: Purchase[]
   settings: Settings
   ingMap: Map<string, Ingredient>; recipeMap: Map<string, Recipe>
 }
@@ -17,16 +17,17 @@ export function useData(): Data {
   const customers = useLiveQuery(() => db.customers.toArray())
   const orders = useLiveQuery(() => db.orders.toArray())
   const expenses = useLiveQuery(() => db.expenses.toArray())
+  const purchases = useLiveQuery(() => db.purchases.toArray())
   const settings = useLiveQuery(async () => (await db.settings.get('main')) ?? null)
-  const ready = [ingredients, recipes, customers, orders, expenses, settings].every((x) => x !== undefined)
+  const ready = [ingredients, recipes, customers, orders, expenses, purchases, settings].every((x) => x !== undefined)
   return useMemo(() => {
     const ing = ingredients ?? E, rec = recipes ?? E
     return {
-      ready, ingredients: ing, recipes: rec, customers: customers ?? E, orders: orders ?? E, expenses: expenses ?? E,
+      ready, ingredients: ing, recipes: rec, customers: customers ?? E, orders: orders ?? E, expenses: expenses ?? E, purchases: purchases ?? E,
       settings: settings ?? defaultSettings(),
       ingMap: new Map(ing.map((i) => [i.id, i])), recipeMap: new Map(rec.map((r) => [r.id, r])),
     }
-  }, [ready, ingredients, recipes, customers, orders, expenses, settings])
+  }, [ready, ingredients, recipes, customers, orders, expenses, purchases, settings])
 }
 
 export function download(name: string, content: string | Blob, type = 'text/plain;charset=utf-8') {

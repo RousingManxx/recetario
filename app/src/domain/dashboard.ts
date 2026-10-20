@@ -34,7 +34,7 @@ export function summarize(orders: Order[], expenses: Expense[], p: Period, now =
   const sales = orders.filter((o) => isSale(o) && inRange(o.confirmedAt ?? o.createdAt, range))
   let salesCents = 0, costCents = 0
   for (const o of sales) { const t = orderTotals(o); salesCents += t.totalCents; costCents += t.costCents + t.commissionCents + t.adjustmentsCents }
-  const collectedCents = orders.filter((o) => o.status !== 'cotizacion').flatMap((o) => o.payments)
+  const collectedCents = orders.flatMap((o) => o.payments)
     .filter((x) => inRange(x.date, range)).reduce((s, x) => s + x.amountCents, 0)
   const expensesCents = expenses.filter((e) => inRange(e.date, range)).reduce((s, e) => s + e.amountCents, 0)
   const grossProfitCents = salesCents - costCents

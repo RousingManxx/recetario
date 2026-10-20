@@ -18,6 +18,7 @@ const P: Record<string, string> = {
   down: 'M12 4v12M7 11l5 5 5-5M5 20h14',
   up: 'M12 16V4M7 9l5-5 5 5M5 20h14',
   cal: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
+  chart: 'M4 20V4M4 20h16M8 16l4-5 3 3 5-7',
 }
 export const Icon = ({ n, size = 22 }: { n: string; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

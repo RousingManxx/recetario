@@ -95,6 +95,8 @@ export type OrderStatus = 'cotizacion' | 'confirmado' | 'preparacion' | 'listo' 
 export type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'otro'
 export type PaymentStatus = 'sin_pago' | 'anticipo' | 'parcial' | 'pagado' | 'reembolsado'
 
+export interface CostShares { ingredients: number; labor: number; energy: number; packaging: number; other: number }
+
 export interface OrderLine {
   id: string
   recipeId: string
@@ -104,6 +106,8 @@ export interface OrderLine {
   /** Costo unitario congelado. En cotización se refresca; al confirmar queda fijo. */
   unitCostCents: number
   commissionPct: number
+  /** Fracción del costo unitario por rubro (suma 1), congelada junto con el costo. Opcional: pedidos anteriores no la tienen. */
+  costShares?: CostShares
   customization: string
 }
 

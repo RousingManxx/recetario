@@ -1,5 +1,5 @@
-import type { Ingredient, Order, OrderLine, OrderStatus, PaymentStatus, Recipe } from './types'
-import { recipeCost } from './costing'
+import type { CostShares, Ingredient, Order, OrderLine, OrderStatus, PaymentStatus, Recipe } from './types'
+import { recipeCost, type CostBreakdown } from './costing'
 import { round } from './money'
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -49,11 +49,17 @@ export function paymentStatus(o: Order): PaymentStatus {
   return first.length === 1 && o.status !== 'entregado' ? 'anticipo' : 'parcial'
 }
 
+export function sharesOf(c: CostBreakdown): CostShares | undefined {
+  if (c.totalCents <= 0) return undefined
+  const t = c.totalCents
+  return { ingredients: (c.ingredientsCents + c.wasteCents) / t, labor: c.laborCents / t, energy: c.energyCents / t, packaging: c.packagingCents / t, other: c.otherCents / t }
+}
+
 export function lineFromRecipe(r: Recipe, ings: Map<string, Ingredient>, qty = 1): OrderLine {
   const c = recipeCost(r, ings)
   return {
     id: crypto.randomUUID(), recipeId: r.id, name: r.name, qty,
-    unitPriceCents: r.priceCents ?? 0, unitCostCents: c.unitCostCents,
+    unitPriceCents: r.priceCents ?? 0, unitCostCents: c.unitCostCents, costShares: sharesOf(c),
     commissionPct: r.commissionPct, customization: '',
   }
 }
@@ -80,7 +86,9 @@ export function transition(
   if (o.status === 'cotizacion' && to !== 'cancelado') {
     lines = o.lines.map((l) => {
       const r = recipes.get(l.recipeId)
-      return r ? { ...l, unitCostCents: recipeCost(r, ings).unitCostCents, commissionPct: r.commissionPct } : l
+      if (!r) return l
+      const c = recipeCost(r, ings)
+      return { ...l, unitCostCents: c.unitCostCents, costShares: sharesOf(c), commissionPct: r.commissionPct }
     })
     confirmedAt = now.toISOString()
   }
@@ -92,7 +100,9 @@ export function refreshQuote(o: Order, recipes: Map<string, Recipe>, ings: Map<s
   if (o.status !== 'cotizacion') return o
   return { ...o, lines: o.lines.map((l) => {
     const r = recipes.get(l.recipeId)
-    return r ? { ...l, unitCostCents: recipeCost(r, ings).unitCostCents } : l
+    if (!r) return l
+    const c = recipeCost(r, ings)
+    return { ...l, unitCostCents: c.unitCostCents, costShares: sharesOf(c) }
   }) }
 }
 

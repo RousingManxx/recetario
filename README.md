@@ -73,17 +73,38 @@ Diseño previsto: backend con autenticación (p. ej. Supabase/Postgres + RLS por
 fusión por registro (el más reciente gana, pedidos confirmados inmutables salvo pagos/ajustes, que se anexan y no entran en conflicto).
 Los ids ya son UUID estables para facilitar esa transición.
 
+## Finanzas
+Pestaña **Finanzas** (`app/src/pages/Finanzas.tsx`, cálculos en `app/src/domain/finance.ts`, gráficas SVG propias en `app/src/ui/charts.tsx`).
+Periodos: hoy, 7 días, mes actual, mes anterior, 3 meses, año actual y rango personalizado; comparación con el periodo anterior
+(mes actual vs. los mismos días del mes pasado). Filtros por estado, categoría y producto. Gráficas: ventas/costos/ganancia,
+evolución del margen, distribución de costos, rentabilidad por receta, ventas por producto, pedidos y cobros, flujo de caja.
+Cada cifra abre el detalle de los pedidos/cobros/gastos que la componen.
+
+Criterios (también visibles en la app, «¿Cómo se calcula?»):
+- **Venta** = pedido confirmado (no cotización ni cancelado), en el periodo de su fecha de confirmación; subtotal − descuento + envío.
+  Un anticipo no es una venta: es un cobro parcial del mismo pedido, por lo que nunca se cuenta dos veces.
+- **Costo** = costos congelados de cada línea al confirmar + comisiones + ajustes, en el mismo periodo que su venta.
+- **Ganancia bruta** = ventas − costos · **Ganancia neta estimada** = bruta − gastos registrados · **Margen** = bruta ÷ ventas.
+- **Cobrado** = pagos por fecha de pago (reembolsos restan) · **Por cobrar** = saldo vigente hoy · **Anticipos** = cobros del periodo en pedidos sin entregar.
+- **Flujo de caja** = cobros − reembolsos − gastos − compras de ingredientes (las compras no entran a la ganancia: su costo se reconoce al vender).
+- El descuento de un pedido se reparte proporcionalmente entre sus productos; envío y ajustes no se asignan a productos.
+- Con filtro de producto/categoría solo se muestran ventas y costos (cobros y gastos no se pueden asignar a un producto) y la app lo avisa.
+- Avisos de datos incompletos: sin gastos registrados, productos sin costo, recetas sin mano de obra, precios en $0.
+- Cambio de modelo: `OrderLine.costShares` (opcional) congela el desglose de costos al confirmar. Los pedidos anteriores aparecen como «Sin desglose»; no se requiere migración y los respaldos siguen siendo v1.
+
 ## Verificación realizada
 | Qué | Resultado |
 |---|---|
-| Pruebas unitarias y de persistencia (`npm test`) | 37 pasan (con `TZ=America/Mexico_City`) |
+| Pruebas unitarias y de persistencia (`npm test`) | 58 pasan (incluye 21 de finanzas; probadas en 3 zonas horarias) |
 | Build de producción + service worker | OK |
 | E2E en Edge (móvil 390 px y escritorio 1280 px) | 21 verificaciones: onboarding → ingredientes → receta ($102.00, precio $255.00) → pedido, anticipo y saldo → costo histórico congelado → resumen → JSON/CSV → borrar todo → restaurar → archivo inválido → persistencia tras recargar; sin errores de consola |
+| E2E de Finanzas (`node e2e/finanzas.mjs`) | Cifras = Resumen, anticipo sin doble conteo, tooltips/teclado, filtros, periodos, detalle, estado vacío, 6 pestañas a 360 y 390 px, claro/oscuro |
 | Safari iOS / iPhone físico / instalación PWA | **No probado** |
 | Accesibilidad | Parcial: etiquetas, foco, `aria`, contraste cuidado; **sin auditoría formal** (axe/VoiceOver) |
 | Rendimiento | Bundle 140 kB gzip; sin medición en dispositivo |
 
 ## Pendiente / limitaciones conocidas
+- Finanzas: sin exportación de reportes, sin presupuestos/metas ni impuestos; las compras de ingredientes no se enlazan al estado de pago al proveedor.
 - Sincronización entre dispositivos; app nativa (xtool); Liquid Glass nativo de iOS.
 - Fotografía de recetas, sub-recetas (receta dentro de receta), inventario con descuento automático por pedido
   (hay campos de existencia/mínimo/caducidad pero **sin** descuento ni alertas de stock), reportes de rentabilidad por periodo.
