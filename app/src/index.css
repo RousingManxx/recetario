@@ -42,6 +42,9 @@
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* Comportamiento de app: sin zoom por doble toque ni por foco en campos (iOS hace zoom si el texto mide < 16 px). */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
+input, select, textarea { font-size: max(16px, 1rem); }
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--bg); background-image: var(--bg-grad); background-attachment: fixed; color: var(--text); font: 16px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
 h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0; letter-spacing: -0.01em; }
