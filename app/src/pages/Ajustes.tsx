@@ -113,6 +113,8 @@ export function Ajustes({ data }: { data: Data }) {
         }}>Borrar todos los datos</button>
       </section>
 
+      <p className="small muted" style={{ textAlign: 'center' }}>Versión de la app: <span className="kbd">{__APP_VERSION__}</span></p>
+
       {report && (
         <Sheet title="Revisar copia de seguridad" onClose={() => setReport(null)}
           footer={<><button className="btn" onClick={() => setReport(null)}>Cancelar</button><button className="btn primary" disabled={!report.rep.ok || busy} onClick={doRestore}>{mode === 'reemplazar' ? 'Reemplazar datos' : 'Combinar datos'}</button></>}>

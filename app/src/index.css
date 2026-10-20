@@ -199,3 +199,10 @@ button.hb { cursor: pointer; } button.hb:hover { background: var(--accent-soft);
 .table { width: 100%; border-collapse: collapse; font-size: 0.85rem; } .table th { text-align: left; color: var(--text-2); font-weight: 500; padding: 6px 4px; } .table td { padding: 6px 4px; border-top: 1px solid var(--line); }
 .tab .short { display: none; }
 @media (max-width: 399px) { .tab .full { display: none; } .tab .short { display: inline; } .tabbar { width: calc(100% - 16px); padding: 5px 3px; } }
+
+/* iOS hace zoom al enfocar campos con texto < 16 px: se fuerza el mínimo. */
+input, select, textarea { font-size: 16px !important; }
+
+
+
+
