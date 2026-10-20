@@ -1,4 +1,4 @@
-import type { Ingredient, Purchase, Recipe } from './types'
+import type { Ingredient, Purchase, Recipe, Tool } from './types'
 import { dimensionOf, qtyInBase } from './units'
 import { round } from './money'
 
@@ -17,11 +17,13 @@ export interface CostBreakdown {
   energyCents: number
   otherCents: number
   packagingCents: number
+  toolsCents: number
   totalCents: number
   usableUnits: number
   unitCostCents: number
   portionCostCents: number
   missing: string[]
+  missingTools: string[]
 }
 
 export function ingredientLineCost(ing: Ingredient, qty: number, unit: Recipe['components'][number]['unit']): number {
@@ -32,8 +34,16 @@ export function ingredientLineCost(ing: Ingredient, qty: number, unit: Recipe['c
  * Costo de producción de una tanda. Merma de ingredientes se suma al costo de ingredientes; merma de
  * producto terminado reduce las unidades vendibles. Cada rubro indirecto usa UN solo modo (sin duplicar).
  */
-export function recipeCost(r: Recipe, ings: Map<string, Ingredient>): CostBreakdown {
+export function recipeCost(r: Recipe, ings: Map<string, Ingredient>, tools: Map<string, Tool> = new Map()): CostBreakdown {
   const missing: string[] = []
+  const missingTools: string[] = []
+  let toolsRaw = 0
+  for (const u of r.toolUses ?? []) {
+    const t = tools.get(u.toolId)
+    if (!t) { missingTools.push(u.toolId); continue }
+    toolsRaw += (t.priceCents * Math.min(Math.max(u.pct, 0), 100)) / 100
+  }
+  const toolsCents = round(toolsRaw)
   let raw = 0
   for (const c of r.components) {
     const ing = ings.get(c.ingredientId)
@@ -54,13 +64,13 @@ export function recipeCost(r: Recipe, ings: Map<string, Ingredient>): CostBreakd
   const usableUnits = Math.max(r.yieldQty * (1 - r.finishedWastePct / 100), 0)
   const packagingCents = round(r.packagingCentsPerUnit * usableUnits)
   const laborCents = round(labor), energyCents = round(energy)
-  const totalCents = ingredientsCents + wasteCents + laborCents + energyCents + r.otherCents + packagingCents
+  const totalCents = ingredientsCents + wasteCents + laborCents + energyCents + r.otherCents + packagingCents + toolsCents
   const unitCostCents = usableUnits > 0 ? round(totalCents / usableUnits) : 0
   return {
-    ingredientsCents, wasteCents, laborCents, energyCents, otherCents: r.otherCents, packagingCents,
+    ingredientsCents, wasteCents, laborCents, energyCents, otherCents: r.otherCents, packagingCents, toolsCents,
     totalCents, usableUnits, unitCostCents,
     portionCostCents: r.portionsPerUnit > 0 ? round(unitCostCents / r.portionsPerUnit) : unitCostCents,
-    missing,
+    missing, missingTools,
   }
 }
 

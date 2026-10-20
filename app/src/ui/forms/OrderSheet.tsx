@@ -24,7 +24,7 @@ export function OrderSheet({ order, data, presetRecipeId, onClose }: { order?: O
     if (order) return order
     const b = blank()
     const r = presetRecipeId ? data.recipeMap.get(presetRecipeId) : undefined
-    return r ? { ...b, lines: [lineFromRecipe(r, data.ingMap)] } : b
+    return r ? { ...b, lines: [lineFromRecipe(r, data.ingMap, 1, data.toolMap)] } : b
   })
   const [tried, setTried] = useState(false)
   const [newCustomer, setNewCustomer] = useState(false)
@@ -53,7 +53,7 @@ export function OrderSheet({ order, data, presetRecipeId, onClose }: { order?: O
       if (to === 'cancelado' && !(await ui.confirm('El pedido quedará cancelado y no podrá reabrirse.', 'Cancelar pedido'))) return
       if (to === 'confirmado' && (nameBad || linesBad)) { setTried(true); return }
       if (to === 'confirmado' && o.lines.some((l) => l.unitPriceCents <= 0) && !(await ui.confirm('Hay productos con precio $0.00. ¿Confirmar de todos modos?', 'Confirmar'))) return
-      await persist(transition(o, to, data.recipeMap, data.ingMap), `Estado: ${STATUS_LABEL[to]}`)
+      await persist(transition(o, to, data.recipeMap, data.ingMap, new Date(), data.toolMap), `Estado: ${STATUS_LABEL[to]}`)
     } catch (e) { ui.toast(e instanceof OrderError ? e.message : (e as Error).message, true) }
   }
   const addPayment = async () => {
@@ -117,7 +117,7 @@ export function OrderSheet({ order, data, presetRecipeId, onClose }: { order?: O
           </div>
         ))}
         {!locked && (
-          <select aria-label="Agregar producto" value="" onChange={(e) => { const r = data.recipeMap.get(e.target.value); if (r) set('lines', [...o.lines, lineFromRecipe(r, data.ingMap)]) }}>
+          <select aria-label="Agregar producto" value="" onChange={(e) => { const r = data.recipeMap.get(e.target.value); if (r) set('lines', [...o.lines, lineFromRecipe(r, data.ingMap, 1, data.toolMap)]) }}>
             <option value="">+ Agregar producto…</option>
             {data.recipes.map((r) => <option key={r.id} value={r.id}>{r.name}{r.priceCents ? ` · ${formatMXN(r.priceCents)}` : ''}</option>)}
           </select>

@@ -36,7 +36,7 @@ export function summarize(orders: Order[], expenses: Expense[], p: Period, now =
   for (const o of sales) { const t = orderTotals(o); salesCents += t.totalCents; costCents += t.costCents + t.commissionCents + t.adjustmentsCents }
   const collectedCents = orders.flatMap((o) => o.payments)
     .filter((x) => inRange(x.date, range)).reduce((s, x) => s + x.amountCents, 0)
-  const expensesCents = expenses.filter((e) => inRange(e.date, range)).reduce((s, e) => s + e.amountCents, 0)
+  const expensesCents = expenses.filter((e) => inRange(e.date, range) && !e.coveredInRecipes).reduce((s, e) => s + e.amountCents, 0)
   const grossProfitCents = salesCents - costCents
   return {
     salesCents, collectedCents, costCents, expensesCents, grossProfitCents,

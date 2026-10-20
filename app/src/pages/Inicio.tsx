@@ -32,7 +32,7 @@ export function Inicio({ data }: { data: Data }) {
   const pct = Math.round((done.filter(Boolean).length / STEPS.length) * 100)
 
   const recipe = data.recipeMap.get(pickId) ?? real.rec[0]
-  const rc = recipe ? recipeCost(recipe, data.ingMap) : null
+  const rc = recipe ? recipeCost(recipe, data.ingMap, data.toolMap) : null
   const rec = rc && margin != null ? priceForMargin(rc.unitCostCents, margin, recipe!.commissionPct) : null
   const lastOrder = [...real.ord].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
   const t = lastOrder ? orderTotals(lastOrder) : null

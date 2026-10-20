@@ -1,13 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo } from 'react'
 import { db, defaultSettings } from '../db/db'
-import type { Customer, Expense, Ingredient, Order, Purchase, Recipe, Settings } from '../domain/types'
+import type { Customer, Expense, Ingredient, Order, Purchase, Recipe, Settings, Tool } from '../domain/types'
 
 export interface Data {
   ready: boolean
-  ingredients: Ingredient[]; recipes: Recipe[]; customers: Customer[]; orders: Order[]; expenses: Expense[]; purchases: Purchase[]
+  ingredients: Ingredient[]; recipes: Recipe[]; customers: Customer[]; orders: Order[]; expenses: Expense[]; purchases: Purchase[]; tools: Tool[]
   settings: Settings
-  ingMap: Map<string, Ingredient>; recipeMap: Map<string, Recipe>
+  ingMap: Map<string, Ingredient>; recipeMap: Map<string, Recipe>; toolMap: Map<string, Tool>
 }
 
 const E: never[] = []
@@ -18,16 +18,17 @@ export function useData(): Data {
   const orders = useLiveQuery(() => db.orders.toArray())
   const expenses = useLiveQuery(() => db.expenses.toArray())
   const purchases = useLiveQuery(() => db.purchases.toArray())
+  const tools = useLiveQuery(() => db.tools.toArray())
   const settings = useLiveQuery(async () => (await db.settings.get('main')) ?? null)
-  const ready = [ingredients, recipes, customers, orders, expenses, purchases, settings].every((x) => x !== undefined)
+  const ready = [ingredients, recipes, customers, orders, expenses, purchases, tools, settings].every((x) => x !== undefined)
   return useMemo(() => {
     const ing = ingredients ?? E, rec = recipes ?? E
     return {
-      ready, ingredients: ing, recipes: rec, customers: customers ?? E, orders: orders ?? E, expenses: expenses ?? E, purchases: purchases ?? E,
+      ready, ingredients: ing, recipes: rec, customers: customers ?? E, orders: orders ?? E, expenses: expenses ?? E, purchases: purchases ?? E, tools: tools ?? E,
       settings: settings ?? defaultSettings(),
-      ingMap: new Map(ing.map((i) => [i.id, i])), recipeMap: new Map(rec.map((r) => [r.id, r])),
+      ingMap: new Map(ing.map((i) => [i.id, i])), recipeMap: new Map(rec.map((r) => [r.id, r])), toolMap: new Map((tools ?? E).map((t) => [t.id, t])),
     }
-  }, [ready, ingredients, recipes, customers, orders, expenses, purchases, settings])
+  }, [ready, ingredients, recipes, customers, orders, expenses, purchases, tools, settings])
 }
 
 export function download(name: string, content: string | Blob, type = 'text/plain;charset=utf-8') {

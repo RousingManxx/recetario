@@ -215,6 +215,7 @@ export function Finanzas({ data }: { data: Data }) {
             <div className="row between"><span>＋ Cobros recibidos</span><span className="num">{formatMXN(m.collected)}</span></div>
             <div className="row between"><span>− Reembolsos</span><span className="num">{formatMXN(m.refunds)}</span></div>
             <div className="row between"><span>− Gastos operativos</span><span className="num">{formatMXN(m.expenses)}</span></div>
+            {m.expensesCovered > 0 && <div className="row between"><span>− Gastos ya cobrados en recetas</span><span className="num">{formatMXN(m.expensesCovered)}</span></div>}
             <div className="row between"><span>− Compras de ingredientes</span><span className="num">{formatMXN(m.purchasesOut)}</span></div>
             <hr style={{ border: 0, borderTop: '1px solid var(--line)', width: '100%' }} />
             <div className="row between"><b>Flujo neto del periodo</b><b className="num" style={{ color: m.cashNet < 0 ? 'var(--bad)' : 'var(--ok)' }}>{m.cashNet < 0 ? '▼ ' : m.cashNet > 0 ? '▲ ' : ''}{formatMXN(m.cashNet)}</b></div>

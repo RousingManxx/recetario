@@ -1,6 +1,6 @@
-import type { Customer, Expense, Ingredient, Order, Purchase, Recipe, Settings } from './types'
+import type { Customer, Expense, Ingredient, Order, Purchase, Recipe, Settings, Tool } from './types'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 export const FORMAT = 'recetasapp-backup'
 
 export interface Snapshot {
@@ -10,6 +10,7 @@ export interface Snapshot {
   customers: Customer[]
   orders: Order[]
   expenses: Expense[]
+  tools: Tool[]
   settings: Settings | null
 }
 
@@ -20,7 +21,7 @@ export interface BackupFile extends Snapshot {
   appVersion: string
 }
 
-export const TABLES = ['ingredients', 'purchases', 'recipes', 'customers', 'orders', 'expenses'] as const
+export const TABLES = ['ingredients', 'purchases', 'recipes', 'customers', 'orders', 'expenses', 'tools'] as const
 export type TableName = (typeof TABLES)[number]
 
 export function buildBackup(s: Snapshot, now = new Date()): BackupFile {
@@ -28,12 +29,15 @@ export function buildBackup(s: Snapshot, now = new Date()): BackupFile {
   return {
     format: FORMAT, schemaVersion: SCHEMA_VERSION, createdAt: now.toISOString(), appVersion: '1.0.0',
     ingredients: real(s.ingredients), purchases: real(s.purchases), recipes: real(s.recipes),
-    customers: real(s.customers), orders: real(s.orders), expenses: real(s.expenses), settings: s.settings,
+    customers: real(s.customers), orders: real(s.orders), expenses: real(s.expenses), tools: real(s.tools), settings: s.settings,
   }
 }
 
 /** Migraciones: clave = versión de origen. Cada una devuelve datos en la versión siguiente. */
-const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {}
+const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  // v1 → v2: se añadió la tabla de herramientas.
+  1: (d) => ({ ...d, tools: Array.isArray(d.tools) ? d.tools : [] }),
+}
 
 export interface ValidationReport {
   ok: boolean
@@ -48,7 +52,7 @@ const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object
 export function parseBackup(text: string): ValidationReport {
   const rep: ValidationReport = {
     ok: false, errors: [], warnings: [],
-    counts: { ingredients: 0, purchases: 0, recipes: 0, customers: 0, orders: 0, expenses: 0 },
+    counts: { ingredients: 0, purchases: 0, recipes: 0, customers: 0, orders: 0, expenses: 0, tools: 0 },
   }
   let raw: unknown
   try { raw = JSON.parse(text) } catch { rep.errors.push('El archivo no es un JSON válido.'); return rep }
@@ -76,9 +80,11 @@ export function parseBackup(text: string): ValidationReport {
   }
   if (rep.errors.length) return rep
   const ids = (t: TableName) => new Set((d[t] as { id: string }[]).map((x) => x.id))
-  const ing = ids('ingredients'), rec = ids('recipes'), cus = ids('customers')
+  const ing = ids('ingredients'), rec = ids('recipes'), cus = ids('customers'), tls = ids('tools')
   for (const c of d.recipes as Recipe[])
     for (const k of c.components ?? []) if (!ing.has(k.ingredientId)) rep.errors.push(`Receta «${c.name}»: ingrediente inexistente (${k.ingredientId}).`)
+  for (const c of d.recipes as Recipe[])
+    for (const u of c.toolUses ?? []) if (!tls.has(u.toolId)) rep.errors.push(`Receta «${c.name}»: herramienta inexistente (${u.toolId}).`)
   for (const p of d.purchases as Purchase[]) if (!ing.has(p.ingredientId)) rep.errors.push(`Compra ${p.id}: ingrediente inexistente.`)
   for (const o of d.orders as Order[]) {
     if (o.customerId && !cus.has(o.customerId)) rep.errors.push(`Pedido ${o.folio}: cliente inexistente.`)
@@ -105,6 +111,7 @@ export function mergeSnapshots(local: Snapshot, incoming: Snapshot): { result: S
       customers: merge(local.customers, incoming.customers),
       orders: merge(local.orders, incoming.orders),
       expenses: merge(local.expenses, incoming.expenses),
+      tools: merge(local.tools, incoming.tools),
       settings: local.settings ?? incoming.settings,
   }
   return { result, added, skipped }

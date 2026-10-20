@@ -37,6 +37,21 @@ export interface Purchase extends Flagged {
   presentation?: string
 }
 
+/** Herramienta o utensilio: su desgaste se cobra en las recetas como un porcentaje de su precio por tanda. */
+export interface Tool extends Flagged {
+  id: string
+  name: string
+  priceCents: number
+  /** Fecha de la última compra / actualización del precio. */
+  priceUpdatedAt: string
+  /** Vida útil estimada en usos (solo ayuda para sugerir el porcentaje de uso). */
+  lifeUses?: number
+  notes: string
+  createdAt: string
+}
+
+export interface ToolUse { toolId: string; /** % del precio de la herramienta que consume una tanda (0–100). */ pct: number }
+
 export interface RecipeComponent { ingredientId: string; qty: number; unit: Unit }
 
 export type RecipeKind = 'producto' | 'pastel' | 'porcion' | 'caja' | 'paquete' | 'personalizado'
@@ -51,6 +66,8 @@ export interface Recipe extends Flagged {
   description: string
   favorite: boolean
   components: RecipeComponent[]
+  /** Desgaste de herramientas por tanda. Opcional: recetas anteriores no lo tienen. */
+  toolUses?: ToolUse[]
   /** Unidades producidas por tanda (p. ej. 1 pastel o 24 galletas). */
   yieldQty: number
   /** Rendimiento real observado (opcional). */
@@ -95,7 +112,7 @@ export type OrderStatus = 'cotizacion' | 'confirmado' | 'preparacion' | 'listo' 
 export type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'otro'
 export type PaymentStatus = 'sin_pago' | 'anticipo' | 'parcial' | 'pagado' | 'reembolsado'
 
-export interface CostShares { ingredients: number; labor: number; energy: number; packaging: number; other: number }
+export interface CostShares { ingredients: number; labor: number; energy: number; packaging: number; other: number; /** Opcional: pedidos anteriores no lo tienen. */ tools?: number }
 
 export interface OrderLine {
   id: string
@@ -147,6 +164,8 @@ export interface Expense extends Flagged {
   category: string
   amountCents: number
   fixed: boolean
+  /** El gasto ya se cobra dentro de los costos de las recetas: no se resta de la ganancia neta (sí cuenta como salida de caja). */
+  coveredInRecipes?: boolean
 }
 
 export interface Settings {

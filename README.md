@@ -73,6 +73,17 @@ Diseño previsto: backend con autenticación (p. ej. Supabase/Postgres + RLS por
 fusión por registro (el más reciente gana, pedidos confirmados inmutables salvo pagos/ajustes, que se anexan y no entran en conflicto).
 Los ids ya son UUID estables para facilitar esa transición.
 
+## Herramientas (Ingredientes → pestaña «Herramientas»)
+Catálogo de herramientas/utensilios (nombre, precio de compra, fecha, vida útil estimada opcional). En cada receta (pestaña Costos →
+«Desgaste de herramientas») eliges las herramientas y el **porcentaje de su precio que consume una tanda** (p. ej. 0.5 % de un tapete de $300 = $1.50).
+El costo se suma al de la receta (`CostBreakdown.toolsCents`), se recalcula si cambia el precio de la herramienta, se congela al confirmar
+un pedido (`costShares.tools`) y aparece como «Herramientas (desgaste)» en Finanzas, CSV y PDF. No se puede eliminar una herramienta en uso.
+- **Gas y otros costos de energía** no son herramientas ni ingredientes: van en Costos → Energía de la receta.
+- **Gastos «ya cobrados en recetas»** (casilla en el formulario de gastos): no restan a la ganancia neta (para no contarlos dos veces) pero sí cuentan como salida de caja.
+- **Esquema v2:** nueva tabla `tools` (Dexie v2, aditiva) y respaldo `schemaVersion: 2`; las copias v1 se migran al importar (`tools: []`).
+  Probado con una base v1 real con datos. Recetas y pedidos anteriores no necesitan cambios (campos opcionales).
+- Pendiente: fondo de reposición, porcentaje general de desgaste sin catálogo, desgaste por tiempo.
+
 ## Finanzas
 Pestaña **Finanzas** (`app/src/pages/Finanzas.tsx`, cálculos en `app/src/domain/finance.ts`, gráficas SVG propias en `app/src/ui/charts.tsx`).
 Periodos: hoy, 7 días, mes actual, mes anterior, 3 meses, año actual y rango personalizado; comparación con el periodo anterior
@@ -103,11 +114,12 @@ no usa «Imprimir», que no es fiable en PWAs de iOS. Con filtro de producto/cat
 ## Verificación realizada
 | Qué | Resultado |
 |---|---|
-| Pruebas unitarias y de persistencia (`npm test`) | 76 pasan (21 de finanzas y 18 de reportes; probadas en 3 zonas horarias) |
+| Pruebas unitarias y de persistencia (`npm test`) | 93 pasan (incluye herramientas, migración v1→v2 y respaldo; probadas en 3 zonas horarias) |
 | Build de producción + service worker | OK |
 | E2E en Edge (móvil 390 px y escritorio 1280 px) | 21 verificaciones: onboarding → ingredientes → receta ($102.00, precio $255.00) → pedido, anticipo y saldo → costo histórico congelado → resumen → JSON/CSV → borrar todo → restaurar → archivo inválido → persistencia tras recargar; sin errores de consola |
 | E2E de Finanzas (`node e2e/finanzas.mjs`) | Cifras = Resumen, anticipo sin doble conteo, tooltips/teclado, filtros, periodos, detalle, estado vacío, 6 pestañas a 360 y 390 px, claro/oscuro |
 | E2E de reportes (`node e2e/reporte.mjs`) | PDF y CSV descargados desde la app, cifras CSV = pantalla, fechas inválidas, filtros; PDF renderizado y revisado visualmente |
+| E2E de herramientas (`node e2e/herramientas.mjs`) | Crear herramienta, 0.5 % en receta ($1.50), recálculo al subir precio, pedido congelado, bloqueo de eliminación, gasto cubierto, respaldo v2 y copia v1 |
 | Safari iOS / iPhone físico / instalación PWA | **No probado** |
 | Accesibilidad | Parcial: etiquetas, foco, `aria`, contraste cuidado; **sin auditoría formal** (axe/VoiceOver) |
 | Rendimiento | Bundle 140 kB gzip; sin medición en dispositivo |

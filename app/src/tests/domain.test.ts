@@ -150,7 +150,7 @@ describe('números y respaldo', () => {
     expect(parseNum('abc')).toBeNaN()
     expect(round(2.5)).toBe(3)
   })
-  const empty = { ingredients: [], purchases: [], recipes: [], customers: [], orders: [], expenses: [], settings: null }
+  const empty = { ingredients: [], purchases: [], recipes: [], customers: [], orders: [], expenses: [], tools: [], settings: null }
   it('acepta respaldo válido y rechaza inválidos', () => {
     const b = buildBackup({ ...empty, ingredients: [ing('choc', 18)] })
     const ok = parseBackup(JSON.stringify(b))

@@ -52,12 +52,13 @@ export function ExpenseForm({ expense, onClose }: { expense?: Expense; onClose: 
   const [amount, setAmount] = useState<number | undefined>(expense ? expense.amountCents / 100 : undefined)
   const [date, setDate] = useState(expense?.date ?? todayISO())
   const [fixed, setFixed] = useState(expense?.fixed ?? false)
+  const [covered, setCovered] = useState(expense?.coveredInRecipes ?? false)
   const [tried, setTried] = useState(false)
   const bad = !concept.trim() || amount === undefined || amount <= 0
   const save = async () => {
     setTried(true)
     if (bad) return
-    await db.expenses.put({ id: expense?.id ?? uid(), concept: concept.trim(), category, amountCents: pesosToCents(amount!), date, fixed, demo: expense?.demo })
+    await db.expenses.put({ id: expense?.id ?? uid(), concept: concept.trim(), category, amountCents: pesosToCents(amount!), date, fixed, coveredInRecipes: covered || undefined, demo: expense?.demo })
     ui.toast('Gasto guardado'); onClose()
   }
   return (
@@ -71,7 +72,8 @@ export function ExpenseForm({ expense, onClose }: { expense?: Expense; onClose: 
         </div>
         <Field label="Categoría"><select value={category} onChange={(e) => setCategory(e.target.value)}>{['Renta y servicios', 'Equipo y utensilios', 'Marketing', 'Transporte', 'Sueldos', 'Otros'].map((c) => <option key={c}>{c}</option>)}</select></Field>
         <label className="row"><input type="checkbox" style={{ width: 22, minHeight: 22 }} checked={fixed} onChange={(e) => setFixed(e.target.checked)} /> Es un gasto fijo (se repite cada mes)</label>
-        <p className="small muted">Los gastos se restan de la ganancia neta del mes. No se suman al costo de las recetas, para evitar contarlos dos veces.</p>
+        <label className="row" style={{ alignItems: 'flex-start' }}><input type="checkbox" style={{ width: 22, minHeight: 22, flex: 'none' }} checked={covered} onChange={(e) => setCovered(e.target.checked)} /> <span>Ya lo cobro dentro de mis recetas (gas, desgaste de herramientas…). No se resta de la ganancia neta para no contarlo dos veces; sí cuenta como salida de caja.</span></label>
+        <p className="small muted">Los gastos normales se restan de la ganancia neta del mes. No se suman al costo de las recetas.</p>
       </div>
     </Sheet>
   )

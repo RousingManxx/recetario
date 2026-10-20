@@ -3,7 +3,8 @@
  *  - VENTA: pedido confirmado (no cotización ni cancelado), asignada al periodo de su fecha de confirmación.
  *    Importe = subtotal − descuento + cargo de envío. Un anticipo NO es una venta: es un cobro parcial del mismo pedido.
  *  - COSTO: costos congelados en las líneas al confirmar + comisiones + ajustes de costo; mismo periodo que su venta.
- *  - GANANCIA BRUTA = ventas − costos. GANANCIA NETA ESTIMADA = bruta − gastos registrados con fecha en el periodo.
+ *  - GANANCIA BRUTA = ventas − costos. GANANCIA NETA ESTIMADA = bruta − gastos registrados con fecha en el periodo,
+ *    salvo los marcados «ya cobrados en recetas» (coveredInRecipes), que ya van dentro de los costos y solo cuentan en caja.
  *  - COBRADO: pagos recibidos con fecha en el periodo (reembolsos son salidas). Independiente de la venta.
  *  - POR COBRAR: saldo vigente HOY de pedidos confirmados (no depende del periodo).
  *  - FLUJO DE CAJA: cobros − reembolsos − gastos − compras de ingredientes, por fecha de movimiento.
@@ -98,6 +99,7 @@ function orderSaleCost(o: Order, c: Ctx, f: Filters): { sales: number; cost: num
 export interface Metrics {
   sales: number; cost: number; gross: number; marginPct: number | null
   expenses: number; net: number
+  expensesCovered: number    // gastos ya incluidos en el costo de las recetas: no restan a la neta, sí son salida de caja
   collected: number          // cobros brutos
   refunds: number            // reembolsos (positivo)
   advances: number           // cobros del periodo sobre pedidos aún no entregados
@@ -116,12 +118,14 @@ export function computeMetrics(c: Ctx, r: Range, f: Filters): Metrics {
   const collected = filtered ? 0 : pays.filter((x) => x.p.amountCents > 0).reduce((s, x) => s + x.p.amountCents, 0)
   const refunds = filtered ? 0 : -pays.filter((x) => x.p.amountCents < 0).reduce((s, x) => s + x.p.amountCents, 0)
   const advances = filtered ? 0 : pays.filter((x) => x.p.amountCents > 0 && x.o.status !== 'entregado' && x.o.status !== 'cancelado').reduce((s, x) => s + x.p.amountCents, 0)
-  const expenses = filtered ? 0 : c.expenses.filter((e) => inRange(e.date, r)).reduce((s, e) => s + e.amountCents, 0)
+  const exps = filtered ? [] : c.expenses.filter((e) => inRange(e.date, r))
+  const expenses = exps.filter((e) => !e.coveredInRecipes).reduce((s, e) => s + e.amountCents, 0)
+  const expensesCovered = exps.filter((e) => e.coveredInRecipes).reduce((s, e) => s + e.amountCents, 0)
   const purchasesOut = filtered ? 0 : c.purchases.filter((p) => inRange(p.date, r)).reduce((s, p) => s + (p.priceCents - p.discountCents + p.extraCents), 0)
   const gross = sales - cost
   return {
-    sales, cost, gross, marginPct: sales > 0 ? (gross / sales) * 100 : null, expenses, net: gross - expenses,
-    collected, refunds, advances, purchasesOut, cashNet: collected - refunds - expenses - purchasesOut, orderCount: sold.length, productFiltered: filtered,
+    sales, cost, gross, marginPct: sales > 0 ? (gross / sales) * 100 : null, expenses, expensesCovered, net: gross - expenses,
+    collected, refunds, advances, purchasesOut, cashNet: collected - refunds - expenses - expensesCovered - purchasesOut, orderCount: sold.length, productFiltered: filtered,
   }
 }
 
@@ -161,17 +165,17 @@ export function buildSeries(c: Ctx, r: Range, g: Granularity, f: Filters): Point
 }
 
 /* ---------- Distribución de costos ---------- */
-export type CostKey = 'ingredients' | 'labor' | 'energy' | 'packaging' | 'other' | 'commission' | 'adjustments' | 'unknown'
+export type CostKey = 'ingredients' | 'tools' | 'labor' | 'energy' | 'packaging' | 'other' | 'commission' | 'adjustments' | 'unknown'
 export const COST_LABEL: Record<CostKey, string> = {
-  ingredients: 'Ingredientes (con merma)', labor: 'Mano de obra', energy: 'Energía', packaging: 'Empaque', other: 'Otros costos de receta',
+  ingredients: 'Ingredientes (con merma)', tools: 'Herramientas (desgaste)', labor: 'Mano de obra', energy: 'Energía', packaging: 'Empaque', other: 'Otros costos de receta',
   commission: 'Comisiones', adjustments: 'Ajustes de pedidos', unknown: 'Sin desglose (pedidos anteriores)',
 }
 export function costDistribution(c: Ctx, r: Range, f: Filters): { key: CostKey; label: string; cents: number; pct: number }[] {
-  const acc: Record<CostKey, number> = { ingredients: 0, labor: 0, energy: 0, packaging: 0, other: 0, commission: 0, adjustments: 0, unknown: 0 }
+  const acc: Record<CostKey, number> = { ingredients: 0, tools: 0, labor: 0, energy: 0, packaging: 0, other: 0, commission: 0, adjustments: 0, unknown: 0 }
   for (const o of saleOrdersIn(c, r, f)) {
     for (const x of lineFigs(o, c, f)) {
       acc.commission += x.commission
-      if (x.shares) for (const k of ['ingredients', 'labor', 'energy', 'packaging', 'other'] as const) acc[k] += x.lineCost * x.shares[k]
+      if (x.shares) for (const k of ['ingredients', 'tools', 'labor', 'energy', 'packaging', 'other'] as const) acc[k] += x.lineCost * (x.shares[k] ?? 0)
       else acc.unknown += x.lineCost
     }
     if (!hasLineFilter(f)) acc.adjustments += o.adjustments.reduce((s, a) => s + a.amountCents, 0)
@@ -211,7 +215,7 @@ export function dataWarnings(c: Ctx, r: Range, f: Filters, m: Metrics): string[]
   const w: string[] = []
   const sold = saleOrdersIn(c, r, f)
   if (m.productFiltered) w.push('Con filtro de producto o categoría solo se muestran ventas y costos: los cobros, gastos y la ganancia neta no se pueden asignar a un producto.')
-  else if (m.sales > 0 && m.expenses === 0) w.push('No hay gastos registrados en este periodo: la ganancia neta no descuenta renta, servicios ni otros gastos, así que no es definitiva. Registra tus gastos con el botón «+».')
+  else if (m.sales > 0 && m.expenses === 0 && m.expensesCovered === 0) w.push('No hay gastos registrados en este periodo: la ganancia neta no descuenta renta, servicios ni otros gastos, así que no es definitiva. Registra tus gastos con el botón «+».')
   const figs = sold.flatMap((o) => lineFigs(o, c, NO_FILTERS))
   const z = figs.filter((x) => x.zeroCost).length
   if (z) w.push(`${z} producto(s) vendidos no tenían costo calculado (receta sin ingredientes): la ganancia está sobreestimada.`)

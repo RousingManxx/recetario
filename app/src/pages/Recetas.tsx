@@ -27,7 +27,7 @@ export function Recetas({ data }: { data: Data }) {
       {data.recipes.length === 0 ? (
         <Empty title="Aún no tienes recetas" text="Calcula cuánto cuesta cada producto y qué precio cobrar." action={<button className="btn primary" onClick={() => open({ k: 'recipe' })}>Crear mi primera receta</button>} />
       ) : list.length === 0 ? <Empty title="Sin resultados" text="Prueba con otra búsqueda o filtro." /> : list.map((r) => {
-        const c = recipeCost(r, data.ingMap)
+        const c = recipeCost(r, data.ingMap, data.toolMap)
         const a = r.priceCents != null ? analyzePrice(r.priceCents, c.unitCostCents, r.commissionPct) : null
         return (
           <div key={r.id} className="item" onClick={() => open({ k: 'recipe', v: r })} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && open({ k: 'recipe', v: r })}>

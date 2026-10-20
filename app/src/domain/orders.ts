@@ -1,4 +1,4 @@
-import type { CostShares, Ingredient, Order, OrderLine, OrderStatus, PaymentStatus, Recipe } from './types'
+import type { CostShares, Ingredient, Order, OrderLine, OrderStatus, PaymentStatus, Recipe, Tool } from './types'
 import { recipeCost, type CostBreakdown } from './costing'
 import { round } from './money'
 
@@ -52,11 +52,11 @@ export function paymentStatus(o: Order): PaymentStatus {
 export function sharesOf(c: CostBreakdown): CostShares | undefined {
   if (c.totalCents <= 0) return undefined
   const t = c.totalCents
-  return { ingredients: (c.ingredientsCents + c.wasteCents) / t, labor: c.laborCents / t, energy: c.energyCents / t, packaging: c.packagingCents / t, other: c.otherCents / t }
+  return { ingredients: (c.ingredientsCents + c.wasteCents) / t, labor: c.laborCents / t, energy: c.energyCents / t, packaging: c.packagingCents / t, other: c.otherCents / t, tools: c.toolsCents / t }
 }
 
-export function lineFromRecipe(r: Recipe, ings: Map<string, Ingredient>, qty = 1): OrderLine {
-  const c = recipeCost(r, ings)
+export function lineFromRecipe(r: Recipe, ings: Map<string, Ingredient>, qty = 1, tools?: Map<string, Tool>): OrderLine {
+  const c = recipeCost(r, ings, tools)
   return {
     id: crypto.randomUUID(), recipeId: r.id, name: r.name, qty,
     unitPriceCents: r.priceCents ?? 0, unitCostCents: c.unitCostCents, costShares: sharesOf(c),
@@ -75,7 +75,7 @@ export class OrderError extends Error {}
  * los cambios en recetas/ingredientes no alteran el pedido. Un pedido sin líneas no se confirma.
  */
 export function transition(
-  o: Order, to: OrderStatus, recipes: Map<string, Recipe>, ings: Map<string, Ingredient>, now = new Date(),
+  o: Order, to: OrderStatus, recipes: Map<string, Recipe>, ings: Map<string, Ingredient>, now = new Date(), tools?: Map<string, Tool>,
 ): Order {
   if (o.status === to) return o
   if (o.status === 'cancelado' || o.status === 'entregado' && to !== 'cancelado')
@@ -87,7 +87,7 @@ export function transition(
     lines = o.lines.map((l) => {
       const r = recipes.get(l.recipeId)
       if (!r) return l
-      const c = recipeCost(r, ings)
+      const c = recipeCost(r, ings, tools)
       return { ...l, unitCostCents: c.unitCostCents, costShares: sharesOf(c), commissionPct: r.commissionPct }
     })
     confirmedAt = now.toISOString()
@@ -96,12 +96,12 @@ export function transition(
 }
 
 /** Una cotización refleja costos vigentes; un pedido confirmado nunca se refresca. */
-export function refreshQuote(o: Order, recipes: Map<string, Recipe>, ings: Map<string, Ingredient>): Order {
+export function refreshQuote(o: Order, recipes: Map<string, Recipe>, ings: Map<string, Ingredient>, tools?: Map<string, Tool>): Order {
   if (o.status !== 'cotizacion') return o
   return { ...o, lines: o.lines.map((l) => {
     const r = recipes.get(l.recipeId)
     if (!r) return l
-    const c = recipeCost(r, ings)
+    const c = recipeCost(r, ings, tools)
     return { ...l, unitCostCents: c.unitCostCents, costShares: sharesOf(c) }
   }) }
 }

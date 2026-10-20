@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Customer, Expense, Ingredient, Order, Purchase, Recipe, Settings } from '../domain/types'
+import type { Customer, Expense, Ingredient, Order, Purchase, Recipe, Settings, Tool } from '../domain/types'
 import { buildBackup, mergeSnapshots, type BackupFile, type Snapshot } from '../domain/backup'
 import { costPerBaseFromPurchase } from '../domain/costing'
 import { dimensionOf } from '../domain/units'
@@ -12,6 +12,7 @@ export class AppDB extends Dexie {
   customers!: Table<Customer, string>
   orders!: Table<Order, string>
   expenses!: Table<Expense, string>
+  tools!: Table<Tool, string>
   settings!: Table<Settings, string>
 
   constructor(name = 'recetasapp') {
@@ -25,6 +26,8 @@ export class AppDB extends Dexie {
       expenses: 'id, date',
       settings: 'id',
     })
+    // v2: herramientas (tabla nueva; los datos existentes no cambian).
+    this.version(2).stores({ tools: 'id, name' })
   }
 }
 
@@ -96,11 +99,11 @@ export async function ingredientInUse(id: string, d = db): Promise<string[]> {
 }
 
 export async function snapshot(d = db): Promise<Snapshot> {
-  const [ingredients, purchases, recipes, customers, orders, expenses, settings] = await Promise.all([
+  const [ingredients, purchases, recipes, customers, orders, expenses, tools, settings] = await Promise.all([
     d.ingredients.toArray(), d.purchases.toArray(), d.recipes.toArray(), d.customers.toArray(),
-    d.orders.toArray(), d.expenses.toArray(), d.settings.get('main'),
+    d.orders.toArray(), d.expenses.toArray(), d.tools.toArray(), d.settings.get('main'),
   ])
-  return { ingredients, purchases, recipes, customers, orders, expenses, settings: settings ?? null }
+  return { ingredients, purchases, recipes, customers, orders, expenses, tools, settings: settings ?? null }
 }
 
 export async function createBackup(d = db): Promise<BackupFile> {
@@ -122,24 +125,25 @@ export async function restoreBackup(file: BackupFile, mode: 'reemplazar' | 'comb
     result = m.result; added = m.added; skipped = m.skipped
   } else {
     result = file
-    added = file.ingredients.length + file.purchases.length + file.recipes.length + file.customers.length + file.orders.length + file.expenses.length
+    added = file.ingredients.length + file.purchases.length + file.recipes.length + file.customers.length + file.orders.length + file.expenses.length + file.tools.length
   }
-  await d.transaction('rw', [d.ingredients, d.purchases, d.recipes, d.customers, d.orders, d.expenses, d.settings], async () => {
-    if (mode === 'reemplazar') await Promise.all([d.ingredients, d.purchases, d.recipes, d.customers, d.orders, d.expenses].map((t) => t.clear()))
+  await d.transaction('rw', [d.ingredients, d.purchases, d.recipes, d.customers, d.orders, d.expenses, d.tools, d.settings], async () => {
+    if (mode === 'reemplazar') await Promise.all([d.ingredients, d.purchases, d.recipes, d.customers, d.orders, d.expenses, d.tools].map((t) => t.clear()))
     await d.ingredients.bulkPut(result.ingredients)
     await d.purchases.bulkPut(result.purchases)
     await d.recipes.bulkPut(result.recipes)
     await d.customers.bulkPut(result.customers)
     await d.orders.bulkPut(result.orders)
     await d.expenses.bulkPut(result.expenses)
+    await d.tools.bulkPut(result.tools)
     if (result.settings) await d.settings.put({ ...result.settings, id: 'main' })
   })
   return { added, skipped, replacedCounts: before.orders.length }
 }
 
 export async function deleteDemoData(d = db) {
-  await d.transaction('rw', [d.ingredients, d.purchases, d.recipes, d.customers, d.orders, d.expenses, d.settings], async () => {
-    for (const t of [d.ingredients, d.purchases, d.recipes, d.customers, d.orders, d.expenses] as Dexie.Table<{ id: string; demo?: boolean }, string>[]) {
+  await d.transaction('rw', [d.ingredients, d.purchases, d.recipes, d.customers, d.orders, d.expenses, d.tools, d.settings], async () => {
+    for (const t of [d.ingredients, d.purchases, d.recipes, d.customers, d.orders, d.expenses, d.tools] as Dexie.Table<{ id: string; demo?: boolean }, string>[]) {
       const ids = (await t.toArray()).filter((x) => x.demo).map((x) => x.id)
       await t.bulkDelete(ids)
     }

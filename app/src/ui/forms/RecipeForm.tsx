@@ -3,7 +3,7 @@ import { db, uid } from '../../db/db'
 import { recipeCost, totalMinutes } from '../../domain/costing'
 import { formatMXN, formatNum, pesosToCents } from '../../domain/money'
 import { analyzePrice, priceForMargin, scenarios } from '../../domain/pricing'
-import type { EnergyMode, Ingredient, LaborMode, Recipe, RecipeKind, Settings, Unit } from '../../domain/types'
+import type { EnergyMode, Ingredient, LaborMode, Recipe, RecipeKind, Settings, ToolUse, Unit } from '../../domain/types'
 import { UNITS, UnitError, qtyInBase } from '../../domain/units'
 import { Field, NumInput, Sheet, useUi } from '../ui'
 import type { Data } from '../data'
@@ -38,21 +38,25 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
   })
 
   const { cost, unitErr } = useMemo(() => {
-    try { return { cost: recipeCost(r, data.ingMap), unitErr: '' } }
-    catch (e) { return { cost: recipeCost({ ...r, components: [] }, data.ingMap), unitErr: e instanceof UnitError ? e.message : 'Error en un ingrediente' } }
-  }, [r, data.ingMap])
+    try { return { cost: recipeCost(r, data.ingMap, data.toolMap), unitErr: '' } }
+    catch (e) { return { cost: recipeCost({ ...r, components: [] }, data.ingMap, data.toolMap), unitErr: e instanceof UnitError ? e.message : 'Error en un ingrediente' } }
+  }, [r, data.ingMap, data.toolMap])
   const commission = r.commissionPct
   const recommended = priceForMargin(cost.unitCostCents, r.targetMarginPct, commission)
   const price = r.priceCents ?? recommended ?? 0
   const an = analyzePrice(price, cost.unitCostCents, commission)
   const nameBad = !r.name.trim()
   const compBad = r.components.some((c) => !c.ingredientId || !(c.qty > 0))
+  const uses = r.toolUses ?? []
+  const toolBad = uses.some((u) => !u.toolId || !(u.pct >= 0 && u.pct <= 100))
+  const setUse = (i: number, patch: Partial<ToolUse>) => set('toolUses', uses.map((u, j) => (j === i ? { ...u, ...patch } : u)))
 
   const save = async () => {
     setTried(true)
     if (nameBad) { setStep('datos'); return }
     if (!(r.yieldQty > 0)) { setStep('datos'); return ui.toast('El rendimiento debe ser mayor que cero', true) }
     if (compBad) { setStep('datos'); return ui.toast('Completa o quita los ingredientes vacíos', true) }
+    if (toolBad) { setStep('costos'); return ui.toast('Cada herramienta necesita un porcentaje de uso entre 0 y 100', true) }
     if (unitErr) return ui.toast(unitErr, true)
     await db.recipes.put({ ...r, name: r.name.trim(), updatedAt: new Date().toISOString() })
     ui.toast('Receta guardada'); onClose()
@@ -167,6 +171,31 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
               </Field>
             </div>
 
+            <h3>Desgaste de herramientas</h3>
+            <p className="small muted">Elige las herramientas que usa esta receta y qué porcentaje de su precio consume cada tanda (por ejemplo 0.5 %). Así vas cubriendo su reposición.</p>
+            {data.tools.length === 0 && <div className="banner">Aún no tienes herramientas. Créalas con el botón «+» o en Ingredientes → Herramientas.</div>}
+            {uses.map((u, i) => {
+              const t = data.toolMap.get(u.toolId)
+              const cost = t && u.pct >= 0 ? Math.round((t.priceCents * Math.min(u.pct, 100)) / 100) : null
+              return (
+                <div key={i} className="card stack" style={{ padding: 12 }}>
+                  <select aria-label="Herramienta" value={u.toolId} aria-invalid={tried && !u.toolId} onChange={(e) => setUse(i, { toolId: e.target.value })}>
+                    <option value="">Elige una herramienta…</option>
+                    {data.tools.filter((x) => x.id === u.toolId || !uses.some((o) => o.toolId === x.id)).map((x) => <option key={x.id} value={x.id}>{x.name} · {formatMXN(x.priceCents)}</option>)}
+                  </select>
+                  <div className="row">
+                    <NumInput value={u.pct || undefined} onChange={(v) => setUse(i, { pct: v ?? 0 })} placeholder="0.5" aria-label="Porcentaje de uso por tanda" invalid={tried && !(u.pct >= 0 && u.pct <= 100)} />
+                    <span className="muted">%</span>
+                    <span className="num nowrap small" style={{ minWidth: 70, textAlign: 'right' }}>{cost === null ? '' : formatMXN(cost)}</span>
+                    <button className="btn small ghost danger" aria-label="Quitar herramienta" onClick={() => set('toolUses', uses.filter((_, j) => j !== i))}>✕</button>
+                  </div>
+                  {t && t.priceCents === 0 && <div className="small" style={{ color: 'var(--warn)' }}>Esta herramienta tiene precio $0.00; no suma costo.</div>}
+                </div>
+              )
+            })}
+            {cost.missingTools.length > 0 && <div className="banner bad">Hay herramientas que ya no existen; quítalas de la receta.</div>}
+            {data.tools.length > uses.length && <button className="btn" onClick={() => set('toolUses', [...uses, { toolId: '', pct: 0 }])}>+ Agregar herramienta</button>}
+
             <h3>Otros</h3>
             <div className="grid2">
               <Field label="Empaque por unidad (MXN)"><NumInput {...money('packagingCentsPerUnit')} /></Field>
@@ -220,7 +249,7 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
           {unitErr && <div className="banner bad">{unitErr}</div>}
           {cost.missing.length > 0 && <div className="banner bad">Hay ingredientes que ya no existen.</div>}
           <div className="row between small"><span>Ingredientes{cost.wasteCents ? ' + merma' : ''}</span><span className="num">{formatMXN(cost.ingredientsCents + cost.wasteCents)}</span></div>
-          <div className="row between small"><span>Mano de obra · energía · otros · empaque</span><span className="num">{formatMXN(cost.laborCents + cost.energyCents + cost.otherCents + cost.packagingCents)}</span></div>
+          <div className="row between small"><span>Mano de obra · energía · herramientas · otros · empaque</span><span className="num">{formatMXN(cost.laborCents + cost.energyCents + cost.toolsCents + cost.otherCents + cost.packagingCents)}</span></div>
           <div className="row between"><b>Costo total de la tanda</b><b className="num">{formatMXN(cost.totalCents)}</b></div>
           <div className="row between"><b>Costo por unidad</b><b className="num">{formatMXN(cost.unitCostCents)}</b></div>
           {r.portionsPerUnit > 1 && <div className="row between small"><span>Costo por porción</span><span className="num">{formatMXN(cost.portionCostCents)}</span></div>}

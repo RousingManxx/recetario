@@ -89,7 +89,7 @@ export function Ajustes({ data }: { data: Data }) {
         <h2>Exportar a CSV (Excel)</h2>
         <Field label="Separador"><select value={sep} onChange={(e) => setSep(e.target.value as ',' | ';')}><option value=",">Coma (Excel en México / inglés)</option><option value=";">Punto y coma (Excel con configuración europea)</option></select></Field>
         <div className="grid">
-          {[['ingredientes.csv', 'Ingredientes'], ['compras.csv', 'Historial de compras'], ['recetas.csv', 'Recetas'], ['recetas_ingredientes.csv', 'Ingredientes de recetas'], ['pedidos.csv', 'Pedidos'], ['pedidos_lineas.csv', 'Líneas de pedido'], ['pagos.csv', 'Pagos'], ['clientes.csv', 'Clientes'], ['gastos.csv', 'Gastos']].map(([n, l]) => <button key={n} className="btn" onClick={() => exportCsv(n)}>{l}</button>)}
+          {[['ingredientes.csv', 'Ingredientes'], ['compras.csv', 'Historial de compras'], ['recetas.csv', 'Recetas'], ['recetas_ingredientes.csv', 'Ingredientes de recetas'], ['herramientas.csv', 'Herramientas'], ['recetas_herramientas.csv', 'Herramientas de recetas'], ['pedidos.csv', 'Pedidos'], ['pedidos_lineas.csv', 'Líneas de pedido'], ['pagos.csv', 'Pagos'], ['clientes.csv', 'Clientes'], ['gastos.csv', 'Gastos']].map(([n, l]) => <button key={n} className="btn" onClick={() => exportCsv(n)}>{l}</button>)}
         </div>
         <button className="btn primary" onClick={() => exportCsv('todo')}>Exportar todo</button>
         <p className="small">¿Quieres un reporte de ventas, costos y ganancias por fechas? Ve a <Link to="/finanzas">Finanzas → Exportar reporte</Link> (PDF o CSV).</p>
@@ -110,7 +110,7 @@ export function Ajustes({ data }: { data: Data }) {
         <button className="btn danger" onClick={async () => {
           if (!(await ui.confirm('Se borrarán TODOS los datos de este dispositivo. Descarga una copia antes.', 'Borrar todo'))) return
           if (!(await ui.confirm('Última confirmación: no hay forma de recuperarlos sin una copia.', 'Sí, borrar todo'))) return
-          await Promise.all([db.ingredients, db.purchases, db.recipes, db.customers, db.orders, db.expenses, db.settings].map((t) => t.clear())); ui.toast('Datos borrados')
+          await Promise.all([db.ingredients, db.purchases, db.recipes, db.customers, db.orders, db.expenses, db.tools, db.settings].map((t) => t.clear())); ui.toast('Datos borrados')
         }}>Borrar todos los datos</button>
       </section>
 
@@ -127,7 +127,7 @@ export function Ajustes({ data }: { data: Data }) {
               <>
                 <div className="card stack small">
                   <b>Contenido (v{report.rep.data!.schemaVersion}, {fmtDateTime(report.rep.data!.createdAt)})</b>
-                  {Object.entries(report.rep.counts).map(([k, v]) => <div key={k} className="row between"><span style={{ textTransform: 'capitalize' }}>{({ ingredients: 'Ingredientes', purchases: 'Compras', recipes: 'Recetas', customers: 'Clientes', orders: 'Pedidos', expenses: 'Gastos' } as Record<string, string>)[k]}</span><span className="num">{v}</span></div>)}
+                  {Object.entries(report.rep.counts).map(([k, v]) => <div key={k} className="row between"><span style={{ textTransform: 'capitalize' }}>{({ ingredients: 'Ingredientes', purchases: 'Compras', recipes: 'Recetas', customers: 'Clientes', orders: 'Pedidos', expenses: 'Gastos', tools: 'Herramientas' } as Record<string, string>)[k]}</span><span className="num">{v}</span></div>)}
                 </div>
                 <Field label="Modo de restauración">
                   <select value={mode} onChange={(e) => setMode(e.target.value as 'reemplazar' | 'combinar')}>
@@ -152,6 +152,7 @@ export function Ajustes({ data }: { data: Data }) {
   "ingredients": [...], "purchases": [...],
   "recipes": [...], "customers": [...],
   "orders": [...], "expenses": [...],
+  "tools": [...],
   "settings": {...}
 }`}</pre>
           <p className="small muted">Importes en centavos MXN (enteros). Cada registro tiene un <span className="kbd">id</span> estable y las relaciones usan esos ids. Las copias de versiones anteriores se migran automáticamente al importar; las de versiones más nuevas se rechazan.</p>

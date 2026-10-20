@@ -126,7 +126,7 @@ export function reportCsv(r: Report, sep: ',' | ';' = ','): string {
     ['Entregados', r.oc.delivered.count, pesos(r.oc.delivered.confirmed), pesos(r.oc.delivered.collected), pesos(r.oc.delivered.pending)],
     ['Por entregar', r.oc.future.count, pesos(r.oc.future.confirmed), pesos(r.oc.future.collected), pesos(r.oc.future.pending)]])
   if (!r.productFiltered) section('FLUJO DE CAJA', ['Concepto', 'Importe'], [
-    ['Cobros recibidos', pesos(mt.collected)], ['Reembolsos', pesos(-mt.refunds)], ['Gastos operativos', pesos(-mt.expenses)], ['Compras de ingredientes', pesos(-mt.purchasesOut)], ['Flujo neto', pesos(mt.cashNet)]])
+    ['Cobros recibidos', pesos(mt.collected)], ['Reembolsos', pesos(-mt.refunds)], ['Gastos operativos', pesos(-mt.expenses)], ['Gastos ya cobrados en recetas', pesos(-mt.expensesCovered)], ['Compras de ingredientes', pesos(-mt.purchasesOut)], ['Flujo neto', pesos(mt.cashNet)]])
   if (r.detail) {
     section('DETALLE: PEDIDOS DEL PERIODO', ['Folio', 'Cliente', 'Confirmado', 'Estado', 'Estado de pago', 'Total', 'Costo', 'Ganancia', 'Cobrado', 'Saldo'],
       r.detail.orders.map((o) => [o.folio, o.customer, o.confirmedAt, o.status, o.payStatus, pesos(o.total), pesos(o.cost), pesos(o.profit), pesos(o.paid), pesos(o.balance)]))

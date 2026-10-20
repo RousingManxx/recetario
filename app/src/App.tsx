@@ -23,7 +23,7 @@ function PlusMenu() {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && setOpenMenu(false)
     addEventListener('keydown', k); return () => removeEventListener('keydown', k)
   }, [openMenu])
-  const items = [['recipe', 'Nueva receta', 'cake'], ['ingredient', 'Nuevo ingrediente', 'jar'], ['order', 'Nuevo pedido', 'bag'], ['customer', 'Nuevo cliente', 'user'], ['expense', 'Nuevo gasto', 'coin']] as const
+  const items = [['recipe', 'Nueva receta', 'cake'], ['ingredient', 'Nuevo ingrediente', 'jar'], ['tool', 'Nueva herramienta', 'tool'], ['order', 'Nuevo pedido', 'bag'], ['customer', 'Nuevo cliente', 'user'], ['expense', 'Nuevo gasto', 'coin']] as const
   return (
     <>
       <button className="plus glass" aria-label="Crear nuevo" aria-haspopup="menu" aria-expanded={openMenu} onClick={() => setOpenMenu(!openMenu)}><Icon n="plus" /></button>

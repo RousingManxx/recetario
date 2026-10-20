@@ -234,7 +234,7 @@ export function reportPdf(r: Report): Uint8Array {
   if (!r.productFiltered) {
     p.heading('Flujo de caja')
     const mt = r.metrics
-    for (const [l, v, b] of [['Cobros recibidos', mt.collected, false], ['Reembolsos', -mt.refunds, false], ['Gastos operativos', -mt.expenses, false], ['Compras de ingredientes', -mt.purchasesOut, false], ['Flujo neto del periodo', mt.cashNet, true]] as const) {
+    for (const [l, v, b] of [['Cobros recibidos', mt.collected, false], ['Reembolsos', -mt.refunds, false], ['Gastos operativos', -mt.expenses, false], ['Gastos ya cobrados en recetas', -mt.expensesCovered, false], ['Compras de ingredientes', -mt.purchasesOut, false], ['Flujo neto del periodo', mt.cashNet, true]] as const) {
       p.ensure(16); p.text(M + 6, p.y, l, { size: 9.5, bold: b }); p.text(PW - M, p.y, signedMoney(v), { size: 9.5, bold: b, align: 'r', color: b && v < 0 ? C.bad : C.text }); p.y += 15
     }
   }
