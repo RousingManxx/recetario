@@ -22,6 +22,9 @@ export function Resumen({ data }: { data: Data }) {
   const empty = data.orders.length === 0 && data.recipes.length === 0
   const total = s.costCents + Math.max(s.grossProfitCents, 0)
   const [from] = periodRange(p)
+  const hasReal = data.orders.some((o) => !o.demo) || data.recipes.some((r) => !r.demo) || data.ingredients.some((i) => !i.demo)
+  const backupDays = data.settings.lastBackupAt ? Math.floor((Date.now() - new Date(data.settings.lastBackupAt).getTime()) / 86400000) : null
+  const backupDue = hasReal && (backupDays === null || backupDays >= 7)
 
   return (
     <div className="stack-lg">
@@ -29,6 +32,7 @@ export function Resumen({ data }: { data: Data }) {
         <div><h1>{data.settings.businessName || 'Resumen'}</h1><div className="muted small">Resumen del negocio</div></div>
       </div>
       {data.settings.demoLoaded && <div className="banner">Estás viendo <b>datos de demostración</b> mezclados con los tuyos. Bórralos en Ajustes cuando quieras.</div>}
+      {backupDue && <Link to="/ajustes" className="banner" style={{ textDecoration: 'none', display: 'block' }}>{data.settings.lastBackupAt ? `Tu última copia de seguridad fue hace ${backupDays} días.` : 'Aún no has hecho una copia de seguridad.'} Descárgala en Ajustes → toca aquí.</Link>}
       {!data.settings.onboardingDone && <Link to="/inicio" className="banner ok" style={{ textDecoration: 'none' }}>Continúa tu guía de inicio → registra tu primer pedido en 5 minutos</Link>}
 
       <div className="stack">

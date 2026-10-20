@@ -62,6 +62,7 @@ function Shell() {
           {TABS.map(([to, l, ic]) => <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><Icon n={ic} size={22} />{l}</NavLink>)}
         </nav>
         <main className="main">
+          <div className="page" key={loc.pathname}>
           <Routes>
             <Route path="/" element={<Resumen data={data} />} />
             <Route path="/recetas" element={<Recetas data={data} />} />
@@ -71,6 +72,7 @@ function Shell() {
             <Route path="/inicio" element={<Inicio data={data} />} />
             <Route path="*" element={<Resumen data={data} />} />
           </Routes>
+          </div>
         </main>
       </div>
     </SheetHost>
