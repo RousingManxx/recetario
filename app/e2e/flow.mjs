@@ -130,7 +130,7 @@ expect(await page.getByText('Ana Pérez').count() >= 1, 'Pedido recuperado tras 
 fs.writeFileSync('e2e/bad.json', '{"format":"otro"}')
 await page.goto(URL + '#/ajustes')
 await page.locator('input[type=file]').setInputFiles('e2e/bad.json')
-expect(await page.getByText('No se puede importar').count() === 1, 'Archivo inválido rechazado')
+await page.getByText('No se puede importar').waitFor(); expect(await page.getByText('No se puede importar').count() === 1, 'Archivo inválido rechazado')
 await page.keyboard.press('Escape')
 
 // Recarga: persistencia
