@@ -59,6 +59,39 @@ describe('costo de herramientas en la receta', () => {
   })
 })
 
+describe('uso de herramientas general (%) en la receta', () => {
+  const base = (o: Partial<Recipe> = {}) => rec({ toolUses: undefined, otherCents: 400, ...o }) // ingredientes $36 + otros $4 = $40
+  it('3 % sobre el costo de la receta: $40 → $1.20', () => {
+    const c = recipeCost(base({ toolWearPct: 3 }), ings)
+    expect(c.toolsCents).toBe(120); expect(c.totalCents).toBe(4000 + 120)
+  })
+  it('incluye mano de obra, energía y empaque en la base', () => {
+    const r = base({ toolWearPct: 10, laborMode: 'hora', laborRateCents: 6000, activeMin: 60, energyValue: 500, packagingCentsPerUnit: 100 })
+    const c = recipeCost(r, ings) // 3600 + 6000 + 500 + 400 + 100 = 10600
+    expect(c.toolsCents).toBe(1060)
+  })
+  it('sin porcentaje o con recetas antiguas no suma nada; se limita a 0–100', () => {
+    expect(recipeCost(base(), ings).toolsCents).toBe(0)
+    expect(recipeCost(base({ toolWearPct: -5 }), ings).toolsCents).toBe(0)
+    expect(recipeCost(base({ toolWearPct: 500 }), ings).toolsCents).toBe(4000)
+  })
+  it('se suma al desgaste por herramienta de recetas anteriores sin duplicar el subtotal', () => {
+    const c = recipeCost(base({ toolWearPct: 3, toolUses: [{ toolId: 't1', pct: 0.5 }] }), ings, tools())
+    expect(c.toolsCents).toBe(150 + 120)
+  })
+  it('el desglose congelado suma 1 y al confirmar el costo queda fijo aunque cambie el porcentaje', () => {
+    const r = base({ toolWearPct: 3 })
+    const l = lineFromRecipe(r, ings, 1)
+    const s = l.costShares!
+    expect(s.ingredients + s.labor + s.energy + s.packaging + s.other + (s.tools ?? 0)).toBeCloseTo(1)
+    expect(s.tools).toBeCloseTo(120 / 4120)
+    let o: Order = { id: 'o', folio: 'P1', customerName: 'A', createdAt: '2026-05-10T10:00:00', deliveryAt: '', status: 'cotizacion', lines: [l], discountCents: 0, deliveryFeeCents: 0, payments: [], adjustments: [], message: '', notes: '' }
+    o = transition(o, 'confirmado', new Map([[r.id, r]]), ings, new Date('2026-05-10T10:00:00'))
+    expect(recipeCost({ ...r, toolWearPct: 20 }, ings).unitCostCents).toBe(4800)
+    expect(o.lines[0].unitCostCents).toBe(4120)
+  })
+})
+
 describe('finanzas con herramientas y gastos ya cobrados en recetas', () => {
   const mk = (extra: Partial<Expense>[] = []): Ctx => {
     const r = rec()

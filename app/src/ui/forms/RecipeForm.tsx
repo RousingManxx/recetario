@@ -17,7 +17,7 @@ export function newRecipe(s: Settings): Recipe {
     id: uid(), name: '', category: RECIPE_CATEGORIES[0], kind: 'producto', description: '', favorite: false, components: [],
     yieldQty: 1, portionsPerUnit: 1, activeMin: 0, bakeMin: 0, restMin: 0, ingredientWastePct: 0, finishedWastePct: 0,
     laborMode: s.defaultLaborMode, laborRateCents: s.defaultLaborRateCents, laborOps: 1, energyMode: 'fijo', energyValue: 0,
-    otherCents: 0, packagingCentsPerUnit: 0, commissionPct: 0, targetMarginPct: s.defaultMarginPct, steps: '', notes: '', updatedAt: new Date().toISOString(),
+    otherCents: 0, packagingCentsPerUnit: 0, commissionPct: 0, toolWearPct: s.defaultToolWearPct ?? 0, targetMarginPct: s.defaultMarginPct, steps: '', notes: '', updatedAt: new Date().toISOString(),
   }
 }
 
@@ -171,30 +171,32 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
               </Field>
             </div>
 
-            <h3>Desgaste de herramientas</h3>
-            <p className="small muted">Elige las herramientas que usa esta receta y qué porcentaje de su precio consume cada tanda (por ejemplo 0.5 %). Así vas cubriendo su reposición.</p>
-            {data.tools.length === 0 && <div className="banner">Aún no tienes herramientas. Créalas con el botón «+» o en Ingredientes → Herramientas.</div>}
-            {uses.map((u, i) => {
-              const t = data.toolMap.get(u.toolId)
-              const cost = t && u.pct >= 0 ? Math.round((t.priceCents * Math.min(u.pct, 100)) / 100) : null
-              return (
-                <div key={i} className="card stack" style={{ padding: 12 }}>
-                  <select aria-label="Herramienta" value={u.toolId} aria-invalid={tried && !u.toolId} onChange={(e) => setUse(i, { toolId: e.target.value })}>
-                    <option value="">Elige una herramienta…</option>
-                    {data.tools.filter((x) => x.id === u.toolId || !uses.some((o) => o.toolId === x.id)).map((x) => <option key={x.id} value={x.id}>{x.name} · {formatMXN(x.priceCents)}</option>)}
-                  </select>
-                  <div className="row">
-                    <NumInput value={u.pct || undefined} onChange={(v) => setUse(i, { pct: v ?? 0 })} placeholder="0.5" aria-label="Porcentaje de uso por tanda" invalid={tried && !(u.pct >= 0 && u.pct <= 100)} />
-                    <span className="muted">%</span>
-                    <span className="num nowrap small" style={{ minWidth: 70, textAlign: 'right' }}>{cost === null ? '' : formatMXN(cost)}</span>
-                    <button className="btn small ghost danger" aria-label="Quitar herramienta" onClick={() => set('toolUses', uses.filter((_, j) => j !== i))}>✕</button>
+            {uses.length > 0 && (
+              <>
+                <h3>Desgaste por herramienta (método anterior)</h3>
+                <p className="small muted">Esta receta tiene herramientas cargadas una por una. Puedes quitarlas y usar solo «Uso de herramientas %» en la sección Otros.</p>
+              {uses.map((u, i) => {
+                const t = data.toolMap.get(u.toolId)
+                const cost = t && u.pct >= 0 ? Math.round((t.priceCents * Math.min(u.pct, 100)) / 100) : null
+                return (
+                  <div key={i} className="card stack" style={{ padding: 12 }}>
+                    <select aria-label="Herramienta" value={u.toolId} aria-invalid={tried && !u.toolId} onChange={(e) => setUse(i, { toolId: e.target.value })}>
+                      <option value="">Elige una herramienta…</option>
+                      {data.tools.filter((x) => x.id === u.toolId || !uses.some((o) => o.toolId === x.id)).map((x) => <option key={x.id} value={x.id}>{x.name} · {formatMXN(x.priceCents)}</option>)}
+                    </select>
+                    <div className="row">
+                      <NumInput value={u.pct || undefined} onChange={(v) => setUse(i, { pct: v ?? 0 })} placeholder="0.5" aria-label="Porcentaje de uso por tanda" invalid={tried && !(u.pct >= 0 && u.pct <= 100)} />
+                      <span className="muted">%</span>
+                      <span className="num nowrap small" style={{ minWidth: 70, textAlign: 'right' }}>{cost === null ? '' : formatMXN(cost)}</span>
+                      <button className="btn small ghost danger" aria-label="Quitar herramienta" onClick={() => set('toolUses', uses.filter((_, j) => j !== i))}>✕</button>
+                    </div>
+                    {t && t.priceCents === 0 && <div className="small" style={{ color: 'var(--warn)' }}>Esta herramienta tiene precio $0.00; no suma costo.</div>}
                   </div>
-                  {t && t.priceCents === 0 && <div className="small" style={{ color: 'var(--warn)' }}>Esta herramienta tiene precio $0.00; no suma costo.</div>}
-                </div>
-              )
-            })}
-            {cost.missingTools.length > 0 && <div className="banner bad">Hay herramientas que ya no existen; quítalas de la receta.</div>}
-            {data.tools.length > uses.length && <button className="btn" onClick={() => set('toolUses', [...uses, { toolId: '', pct: 0 }])}>+ Agregar herramienta</button>}
+                )
+              })}
+                {cost.missingTools.length > 0 && <div className="banner bad">Hay herramientas que ya no existen; quítalas de la receta.</div>}
+              </>
+            )}
 
             <h3>Otros</h3>
             <div className="grid2">
@@ -202,6 +204,7 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
               <Field label="Otros costos por tanda (MXN)" hint="Decoración, etiquetas"><NumInput {...money('otherCents')} /></Field>
               <Field label="Merma de ingredientes (%)"><NumInput value={r.ingredientWastePct} onChange={(v) => set('ingredientWastePct', v ?? 0)} /></Field>
               <Field label="Merma del terminado (%)" hint="Unidades que no se podrán vender"><NumInput value={r.finishedWastePct} onChange={(v) => set('finishedWastePct', v ?? 0)} /></Field>
+              <Field label="Uso de herramientas (%)" hint={`Sobre el costo de la receta. Herramientas en esta receta: ${formatMXN(cost.toolsCents)} por tanda.`}><NumInput value={r.toolWearPct || undefined} placeholder="0" onChange={(v) => set('toolWearPct', v === undefined ? 0 : Math.min(Math.max(v, 0), 100))} /></Field>
             </div>
             <Field label="Comisión de plataforma / pago (% sobre la venta)"><NumInput value={r.commissionPct} onChange={(v) => set('commissionPct', v ?? 0)} /></Field>
           </div>

@@ -7,7 +7,7 @@ import { exportCsvs } from '../domain/csv'
 import { formatMXN } from '../domain/money'
 import type { LaborMode } from '../domain/types'
 import { useOpen } from '../ui/create'
-import { download, fmtDateTime, type Data } from '../ui/data'
+import { download, fmtDateTime, todayISO, type Data } from '../ui/data'
 import { Badge, Field, NumInput, Sheet, useUi } from '../ui/ui'
 
 export function Ajustes({ data }: { data: Data }) {
@@ -22,7 +22,7 @@ export function Ajustes({ data }: { data: Data }) {
   const [busy, setBusy] = useState(false)
   const [showJson, setShowJson] = useState(false)
 
-  const stamp = () => new Date().toISOString().slice(0, 10)
+  const stamp = () => todayISO()
   const exportJson = async () => { const b = await createBackup(); download(`recetario-respaldo-${stamp()}.json`, JSON.stringify(b, null, 2), 'application/json'); ui.toast('Copia de seguridad descargada') }
   const copyJson = async () => {
     try { await navigator.clipboard.writeText(JSON.stringify(await createBackup(), null, 2)); ui.toast('JSON copiado al portapapeles') }
@@ -66,6 +66,7 @@ export function Ajustes({ data }: { data: Data }) {
           <Field label="Mano de obra por defecto"><select value={s.defaultLaborMode} onChange={(e) => saveSettings({ defaultLaborMode: e.target.value as LaborMode })}><option value="hora">Por hora</option><option value="minuto">Por minuto</option><option value="operacion">Por operación</option></select></Field>
           <Field label="Tarifa por defecto (MXN)"><NumInput value={s.defaultLaborRateCents / 100} onChange={(v) => saveSettings({ defaultLaborRateCents: Math.round((v ?? 0) * 100) })} /></Field>
           <Field label="Margen objetivo por defecto (%)"><NumInput value={s.defaultMarginPct} onChange={(v) => saveSettings({ defaultMarginPct: v ?? 0 })} /></Field>
+          <Field label="Uso de herramientas por defecto (%)" hint="Se propone en recetas nuevas; sobre el costo de la receta."><NumInput value={s.defaultToolWearPct ?? 0} onChange={(v) => saveSettings({ defaultToolWearPct: v && v > 0 ? Math.min(v, 100) : 0 })} /></Field>
           <Field label="Avisar precios con más de (días)"><NumInput value={s.staleDays} onChange={(v) => saveSettings({ staleDays: v && v > 0 ? v : 60 })} /></Field>
         </div>
         <p className="small muted">Estos valores se usan solo como punto de partida en recetas nuevas; en cada receta puedes cambiarlos.</p>

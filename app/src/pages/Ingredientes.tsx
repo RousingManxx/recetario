@@ -40,13 +40,13 @@ export function Ingredientes({ data }: { data: Data }) {
       )))}
 
       {isTools && (data.tools.length === 0 ? (
-        <Empty title="Aún no hay herramientas" text="Registra espátulas, tapetes, moldes… y cobra un pequeño porcentaje de su desgaste en cada receta para poder reponerlas." action={<button className="btn primary" onClick={() => open({ k: 'tool' })}>Registrar la primera</button>} />
+        <Empty title="Aún no hay herramientas" text="Registra espátulas, tapetes, moldes… y su precio para saber cuánto cuesta reponerlas. En cada receta cobras un «Uso de herramientas %» general (Costos → Otros)." action={<button className="btn primary" onClick={() => open({ k: 'tool' })}>Registrar la primera</button>} />
       ) : tools.length === 0 ? <Empty title="Sin resultados" text="Prueba con otra búsqueda." /> : tools.map((t) => {
         const used = usage(t.id)
         return (
           <button key={t.id} className="item" onClick={() => open({ k: 'tool', v: t })}>
             <div className="grow">
-              <div className="row wrap" style={{ gap: 6 }}><b>{t.name}</b>{t.demo && <Badge tone="pink">demo</Badge>}{used.length === 0 && <Badge tone="warn">Sin usar en recetas</Badge>}</div>
+              <div className="row wrap" style={{ gap: 6 }}><b>{t.name}</b>{t.demo && <Badge tone="pink">demo</Badge>}</div>
               <div className="small muted">Comprada {fmtDate(t.priceUpdatedAt)}{t.lifeUses ? ` · vida útil ${formatNum(t.lifeUses)} usos` : ''}</div>
               {used.length > 0 && <div className="small muted">En {used.length} receta{used.length === 1 ? '' : 's'}: {used.slice(0, 3).map((r) => r.name).join(', ')}{used.length > 3 ? '…' : ''}</div>}
             </div>

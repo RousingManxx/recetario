@@ -35,8 +35,8 @@ export function exportCsvs(s: Snapshot, sep: ',' | ';' = ','): Record<string, st
       ['id', 'ingrediente_id', 'fecha', 'cantidad', 'unidad', 'precio_mxn', 'descuento_mxn', 'extras_mxn'],
       real(s.purchases).map((p) => [p.id, p.ingredientId, p.date, p.qty, p.unit, pesos(p.priceCents), pesos(p.discountCents), pesos(p.extraCents)]), sep),
     'recetas.csv': toCsv(
-      ['id', 'nombre', 'categoria', 'tipo', 'rinde', 'porciones_por_unidad', 'min_activos', 'min_horneado', 'min_reposo', 'merma_ingredientes_pct', 'merma_terminado_pct', 'margen_objetivo_pct', 'precio_mxn'],
-      recs.map((r) => [r.id, r.name, r.category, r.kind, r.yieldQty, r.portionsPerUnit, r.activeMin, r.bakeMin, r.restMin, r.ingredientWastePct, r.finishedWastePct, r.targetMarginPct, r.priceCents == null ? '' : pesos(r.priceCents)]), sep),
+      ['id', 'nombre', 'categoria', 'tipo', 'rinde', 'porciones_por_unidad', 'min_activos', 'min_horneado', 'min_reposo', 'merma_ingredientes_pct', 'merma_terminado_pct', 'uso_herramientas_pct', 'margen_objetivo_pct', 'precio_mxn'],
+      recs.map((r) => [r.id, r.name, r.category, r.kind, r.yieldQty, r.portionsPerUnit, r.activeMin, r.bakeMin, r.restMin, r.ingredientWastePct, r.finishedWastePct, r.toolWearPct ?? 0, r.targetMarginPct, r.priceCents == null ? '' : pesos(r.priceCents)]), sep),
     'recetas_ingredientes.csv': toCsv(
       ['receta_id', 'ingrediente_id', 'cantidad', 'unidad'],
       recs.flatMap((r) => r.components.map((c) => [r.id, c.ingredientId, c.qty, c.unit])), sep),

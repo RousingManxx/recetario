@@ -64,10 +64,14 @@ export function recipeCost(r: Recipe, ings: Map<string, Ingredient>, tools: Map<
   const usableUnits = Math.max(r.yieldQty * (1 - r.finishedWastePct / 100), 0)
   const packagingCents = round(r.packagingCentsPerUnit * usableUnits)
   const laborCents = round(labor), energyCents = round(energy)
-  const totalCents = ingredientsCents + wasteCents + laborCents + energyCents + r.otherCents + packagingCents + toolsCents
+  // Uso de herramientas general: % sobre el costo de la receta antes de herramientas. Se suma al desgaste por herramienta (recetas antiguas).
+  const subtotal = ingredientsCents + wasteCents + laborCents + energyCents + r.otherCents + packagingCents
+  const wearCents = round((subtotal * Math.min(Math.max(r.toolWearPct ?? 0, 0), 100)) / 100)
+  const toolsTotal = toolsCents + wearCents
+  const totalCents = subtotal + toolsTotal
   const unitCostCents = usableUnits > 0 ? round(totalCents / usableUnits) : 0
   return {
-    ingredientsCents, wasteCents, laborCents, energyCents, otherCents: r.otherCents, packagingCents, toolsCents,
+    ingredientsCents, wasteCents, laborCents, energyCents, otherCents: r.otherCents, packagingCents, toolsCents: toolsTotal,
     totalCents, usableUnits, unitCostCents,
     portionCostCents: r.portionsPerUnit > 0 ? round(unitCostCents / r.portionsPerUnit) : unitCostCents,
     missing, missingTools,

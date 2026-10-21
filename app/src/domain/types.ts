@@ -68,6 +68,8 @@ export interface Recipe extends Flagged {
   components: RecipeComponent[]
   /** Desgaste de herramientas por tanda. Opcional: recetas anteriores no lo tienen. */
   toolUses?: ToolUse[]
+  /** Uso de herramientas: % sobre el costo de la receta (ingredientes, merma, mano de obra, energía, otros y empaque). Opcional. */
+  toolWearPct?: number
   /** Unidades producidas por tanda (p. ej. 1 pastel o 24 galletas). */
   yieldQty: number
   /** Rendimiento real observado (opcional). */
@@ -177,6 +179,8 @@ export interface Settings {
   defaultLaborMode: LaborMode
   defaultLaborRateCents: number
   defaultMarginPct: number
+  /** Uso de herramientas (%) que se propone en recetas nuevas. */
+  defaultToolWearPct?: number
   staleDays: number
   onboarding: Record<string, boolean>
   onboardingDone: boolean

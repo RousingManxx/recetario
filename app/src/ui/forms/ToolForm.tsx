@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { db, uid } from '../../db/db'
-import { formatMXN, formatNum, pesosToCents } from '../../domain/money'
+import { pesosToCents } from '../../domain/money'
 import type { Tool } from '../../domain/types'
 import { todayISO } from '../data'
 import { Field, NumInput, Sheet, useUi } from '../ui'
@@ -19,7 +19,6 @@ export function ToolForm({ tool, onClose }: { tool?: Tool; onClose: () => void }
   const [notes, setNotes] = useState(tool?.notes ?? '')
   const [tried, setTried] = useState(false)
   const priceBad = price === undefined || price < 0
-  const suggested = life && life > 0 ? 100 / life : null
 
   const save = async () => {
     setTried(true)
@@ -48,12 +47,11 @@ export function ToolForm({ tool, onClose }: { tool?: Tool; onClose: () => void }
           <Field label="Precio de compra (MXN)" error={tried && priceBad ? 'Escribe el precio' : undefined}><NumInput value={price} onChange={setPrice} placeholder="300" invalid={tried && priceBad} /></Field>
           <Field label="Fecha de compra"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
         </div>
-        <Field label="Vida útil estimada en usos (opcional)" hint="Solo es una ayuda para decidir el porcentaje de uso que cobras en cada receta.">
+        <Field label="Vida útil estimada en usos (opcional)" hint="Solo para tu referencia: cada cuántas tandas sueles reponerla.">
           <NumInput value={life} onChange={setLife} placeholder="200" />
         </Field>
-        {suggested !== null && <div className="banner ok">Si la usas en {formatNum(life!)} tandas antes de reponerla, cada tanda consume <b>{formatNum(Math.round(suggested * 1000) / 1000)} %</b> de su precio{price ? ` (${formatMXN(Math.round((pesosToCents(price) * suggested) / 100))} por tanda)` : ''}.</div>}
         <Field label="Notas"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} style={{ minHeight: 56 }} /></Field>
-        <p className="small muted">En cada receta eliges qué porcentaje de esta herramienta consume una tanda. Ese costo se suma al costo de la receta y, al cambiar el precio aquí, las recetas se recalculan.</p>
+        <p className="small muted">Aquí llevas el registro de tus herramientas y cuánto cuesta reponerlas. Para cobrar su desgaste, cada receta tiene un «Uso de herramientas %» general (Costos → Otros).</p>
       </div>
     </Sheet>
   )
