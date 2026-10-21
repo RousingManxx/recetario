@@ -44,5 +44,62 @@ export async function loadDemo() {
   })
   o = transition(o, 'confirmado', rm, ings, new Date(), tools)
   await saveOrder({ ...o, payments: [{ id: uid(), date: localDate(new Date()), amountCents: 20000, method: 'transferencia' }] })
+  await loadMacaronDemo({ date, mk, ings, base, huevo, azucar, mantequilla, choc, tools })
   await saveSettings({ demoLoaded: true })
+}
+
+/**
+ * Macarrones armados con recetas SEPARADAS: «Tapas» y un relleno por sabor, más la caja. Cada receta rinde «piezas» (1 tapa, 1 relleno, 1 caja)
+ * y se agregan como líneas distintas de un mismo pedido: 1 macarrón = 2 tapas + 1 relleno. Precio de cada pieza con margen del 60 %.
+ */
+async function loadMacaronDemo(c: {
+  date: string; mk: (name: string, category: string, qty: number, unit: Unit, price: number) => Promise<Ingredient>
+  ings: Map<string, Ingredient>; base: Omit<Recipe, 'id' | 'name' | 'kind' | 'components' | 'yieldQty' | 'activeMin' | 'bakeMin' | 'restMin'> & Partial<Recipe>
+  huevo: Ingredient; azucar: Ingredient; mantequilla: Ingredient; choc: Ingredient; tools: Map<string, Tool>
+}) {
+  const { date, mk, base, huevo, azucar, mantequilla, choc } = c
+  const [almendra, glass, colorante, crema, fresa, pistache, caja] = await Promise.all([
+    mk('Harina de almendra (demo)', 'Harinas y secos', 500, 'g', 380), mk('Azúcar glass (demo)', 'Azúcares', 1, 'kg', 38),
+    mk('Colorante en gel (demo)', 'Saborizantes', 20, 'g', 60), mk('Crema para batir (demo)', 'Lácteos y huevo', 1, 'l', 75),
+    mk('Puré de fresa (demo)', 'Frutas', 500, 'g', 90), mk('Pasta de pistache (demo)', 'Saborizantes', 200, 'g', 260),
+    mk('Caja para 6 macarrones (demo)', 'Empaque', 10, 'pza', 85),
+  ])
+  const ings = new Map(c.ings); for (const i of [almendra, glass, colorante, crema, fresa, pistache, caja]) ings.set(i.id, i)
+  const mkTool = (name: string, price: number, lifeUses: number, notes: string): Tool => ({ id: uid(), name: `${name} (demo)`, priceCents: price * 100, priceUpdatedAt: date, lifeUses, notes, createdAt: new Date().toISOString(), demo: true })
+  const toolList = [mkTool('Tapete para macarrón', 350, 150, 'Con guía de círculos'), mkTool('Manga pastelera y duya', 120, 100, ''), mkTool('Tamiz fino', 150, 300, 'Para almendra y azúcar glass'), mkTool('Báscula digital', 280, 1000, 'Precisión de 1 g')]
+  await db.tools.bulkAdd(toolList)
+  const common = { ...base, packagingCentsPerUnit: 0, ingredientWastePct: 3, finishedWastePct: 0, portionsPerUnit: 1, category: 'Macarrones', energyValue: 500 }
+  const tapas: Recipe = {
+    ...common, id: uid(), name: 'Tapas de macarrón (demo)', kind: 'producto', yieldQty: 60, finishedWastePct: 10, activeMin: 90, bakeMin: 18, restMin: 45, toolWearPct: 3, energyValue: 700,
+    description: 'Cascarones sin relleno. Cada unidad = 1 tapa; 2 tapas + 1 relleno = 1 macarrón. Rinde 60 tapas (30 macarrones) y se pierde ~10 % por grietas o huecos.',
+    components: [{ ingredientId: almendra.id, qty: 100, unit: 'g' }, { ingredientId: glass.id, qty: 100, unit: 'g' }, { ingredientId: azucar.id, qty: 100, unit: 'g' }, { ingredientId: huevo.id, qty: 3, unit: 'pza' }, { ingredientId: colorante.id, qty: 1, unit: 'g' }],
+    steps: '1. Tamizar almendra y azúcar glass. 2. Merengue con claras y azúcar. 3. Macaronage. 4. Manga: círculos en el tapete. 5. Reposar 45 min y hornear.',
+    notes: 'Herramientas: tapete para macarrón, manga con duya, tamiz y báscula.',
+  }
+  const filling = (name: string, sabor: string, components: Recipe['components'], extra: Partial<Recipe> = {}): Recipe => ({
+    ...common, id: uid(), name: `${name} (demo)`, kind: 'producto', yieldQty: 30, activeMin: 25, bakeMin: 0, restMin: 60, toolWearPct: 1, energyValue: 0,
+    description: `Relleno sabor ${sabor}. Cada unidad = 1 relleno (alcanza para 1 macarrón); la tanda rinde 30.`, components, ...extra,
+  })
+  const ganache = filling('Relleno de ganache de chocolate', 'chocolate', [{ ingredientId: choc.id, qty: 150, unit: 'g' }, { ingredientId: crema.id, qty: 100, unit: 'ml' }, { ingredientId: mantequilla.id, qty: 20, unit: 'g' }])
+  const fresaR = filling('Relleno de fresa', 'fresa', [{ ingredientId: mantequilla.id, qty: 90, unit: 'g' }, { ingredientId: glass.id, qty: 120, unit: 'g' }, { ingredientId: fresa.id, qty: 80, unit: 'g' }])
+  const pistacheR = filling('Relleno de pistache', 'pistache', [{ ingredientId: pistache.id, qty: 60, unit: 'g' }, { ingredientId: crema.id, qty: 100, unit: 'ml' }, { ingredientId: glass.id, qty: 40, unit: 'g' }])
+  const cajaR: Recipe = {
+    ...common, id: uid(), name: 'Caja para 6 macarrones (demo)', kind: 'caja', yieldQty: 1, activeMin: 3, bakeMin: 0, restMin: 0, toolWearPct: 0, energyValue: 0, ingredientWastePct: 0, targetMarginPct: 50,
+    description: 'Empaque de regalo; se agrega una caja por cada 6 macarrones.', components: [{ ingredientId: caja.id, qty: 1, unit: 'pza' }],
+  }
+  const recipes = [tapas, ganache, fresaR, pistacheR, cajaR]
+  for (const r of recipes) r.priceCents = priceForMargin(recipeCost(r, ings).unitCostCents, r.targetMarginPct ?? 60) ?? 0
+  await db.recipes.bulkAdd(recipes)
+
+  const cust = { id: uid(), name: 'Sofía Ramírez (demo)', phone: '55 1111 2222', notes: 'Pide macarrones surtidos para eventos.', createdAt: new Date().toISOString(), demo: true }
+  await db.customers.add(cust)
+  // 12 de fresa + 6 de chocolate = 18 macarrones → 36 tapas, 12 + 6 rellenos y 3 cajas de 6.
+  const line = (r: Recipe, qty: number, customization = '') => ({ ...lineFromRecipe(r, ings, qty), customization })
+  let o = await saveOrder({
+    id: uid(), folio: '', customerId: cust.id, customerName: cust.name, createdAt: new Date().toISOString(), deliveryAt: new Date(Date.now() + 4 * 86400000).toISOString(), status: 'cotizacion',
+    lines: [line(tapas, 36, '18 rosa y 18 café'), line(fresaR, 12), line(ganache, 6), line(cajaR, 3, 'Moño dorado')],
+    discountCents: 0, deliveryFeeCents: 0, payments: [], adjustments: [], message: 'Para el evento de Sofía: 12 macarrones de fresa y 6 de chocolate.', notes: '', demo: true,
+  })
+  o = transition(o, 'confirmado', new Map(recipes.map((r) => [r.id, r])), ings)
+  await saveOrder({ ...o, payments: [{ id: uid(), date: localDate(new Date()), amountCents: 15000, method: 'efectivo' }] })
 }

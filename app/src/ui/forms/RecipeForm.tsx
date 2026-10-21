@@ -8,7 +8,9 @@ import { UNITS, UnitError, qtyInBase } from '../../domain/units'
 import { Field, NumInput, Sheet, useUi } from '../ui'
 import type { Data } from '../data'
 
-export const RECIPE_CATEGORIES = ['Pasteles', 'Galletas', 'Pan', 'Cupcakes', 'Postres', 'Cajas y paquetes', 'Otros']
+export const RECIPE_CATEGORIES = ['Pasteles', 'Galletas', 'Pan', 'Cupcakes', 'Macarrones', 'Postres', 'Cajas y paquetes', 'Otros']
+/** Categorías predeterminadas + las que ya usan tus recetas (así nunca se pierde una al editar). */
+export const categoriesOf = (recipes: { category: string }[], current?: string) => [...new Set([...RECIPE_CATEGORIES, ...recipes.map((r) => r.category), ...(current ? [current] : [])])].filter(Boolean)
 const KINDS: [RecipeKind, string][] = [['producto', 'Producto individual'], ['pastel', 'Pastel completo'], ['porcion', 'Porción'], ['caja', 'Caja'], ['paquete', 'Paquete'], ['personalizado', 'Personalizado']]
 const ALL_UNITS = Object.keys(UNITS) as Unit[]
 
@@ -101,7 +103,7 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
               <input value={r.name} onChange={(e) => set('name', e.target.value)} placeholder="Pastel de chocolate" autoFocus aria-invalid={tried && nameBad} />
             </Field>
             <div className="grid2">
-              <Field label="Categoría"><select value={r.category} onChange={(e) => set('category', e.target.value)}>{RECIPE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></Field>
+              <Field label="Categoría"><select value={r.category} onChange={(e) => set('category', e.target.value)}>{categoriesOf(data.recipes, r.category).map((c) => <option key={c}>{c}</option>)}</select></Field>
               <Field label="Tipo"><select value={r.kind} onChange={(e) => set('kind', e.target.value as RecipeKind)}>{KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
             </div>
             <Field label="Descripción"><textarea value={r.description} onChange={(e) => set('description', e.target.value)} style={{ minHeight: 56 }} /></Field>

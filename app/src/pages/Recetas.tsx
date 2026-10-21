@@ -5,7 +5,7 @@ import { formatMXN, formatNum } from '../domain/money'
 import { analyzePrice } from '../domain/pricing'
 import { useOpen } from '../ui/create'
 import type { Data } from '../ui/data'
-import { duplicateRecipe, RECIPE_CATEGORIES } from '../ui/forms/RecipeForm'
+import { categoriesOf, duplicateRecipe } from '../ui/forms/RecipeForm'
 import { Badge, Empty, Icon } from '../ui/ui'
 
 export function Recetas({ data }: { data: Data }) {
@@ -21,7 +21,7 @@ export function Recetas({ data }: { data: Data }) {
       <div className="page-head"><h1>Recetas</h1><button className="btn primary" onClick={() => open({ k: 'recipe' })}>+ Nueva</button></div>
       <div className="row">
         <div className="grow" style={{ position: 'relative' }}><input aria-label="Buscar receta" placeholder="Buscar…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-        <select aria-label="Categoría" value={cat} onChange={(e) => setCat(e.target.value)} style={{ width: 150 }}><option value="">Todas</option>{RECIPE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
+        <select aria-label="Categoría" value={cat} onChange={(e) => setCat(e.target.value)} style={{ width: 150 }}><option value="">Todas</option>{categoriesOf(data.recipes).map((c) => <option key={c}>{c}</option>)}</select>
         <button className="btn" aria-pressed={favs} onClick={() => setFavs(!favs)} aria-label="Solo favoritas" style={favs ? { background: 'var(--accent-soft)' } : {}}><Icon n="star" size={18} /></button>
       </div>
       {data.recipes.length === 0 ? (

@@ -87,6 +87,12 @@ Los ids ya son UUID estables para facilitar esa transición.
   base v1 real con datos. Campos nuevos opcionales: no requieren cambios en recetas ni pedidos anteriores.
 - Pendiente: fondo de reposición y desgaste por tiempo.
 
+### Demo de macarrones (recetas separadas)
+Los datos de demostración incluyen un caso de macarrones armados con recetas independientes: «Tapas de macarrón» (rinde 60 tapas, 10 % de merma),
+un relleno por sabor (ganache, fresa, pistache; cada unidad = 1 relleno) y «Caja para 6 macarrones», con ingredientes y herramientas demo. El pedido de
+ejemplo (Sofía Ramírez) arma 18 macarrones como líneas distintas: 36 tapas + 12 + 6 rellenos + 3 cajas. Las categorías de receta ahora incluyen
+«Macarrones» y siempre se completan con las que ya usen tus recetas. Limitación conocida: no hay recetas dentro de recetas (sub-recetas); ver «Pendiente».
+
 ## Finanzas
 Pestaña **Finanzas** (`app/src/pages/Finanzas.tsx`, cálculos en `app/src/domain/finance.ts`, gráficas SVG propias en `app/src/ui/charts.tsx`).
 Periodos: hoy, 7 días, mes actual, mes anterior, 3 meses, año actual y rango personalizado; comparación con el periodo anterior
@@ -130,7 +136,7 @@ no usa «Imprimir», que no es fiable en PWAs de iOS. Con filtro de producto/cat
 ## Pendiente / limitaciones conocidas
 - Finanzas: sin presupuestos/metas ni impuestos; las compras de ingredientes no se enlazan al estado de pago al proveedor.
 - Sincronización entre dispositivos; app nativa (xtool); Liquid Glass nativo de iOS.
-- Fotografía de recetas, sub-recetas (receta dentro de receta), inventario con descuento automático por pedido
+- Sub-recetas / «recetas armadas» (receta dentro de receta, p. ej. macarrón = 2 tapas + 1 relleno), fotografía de recetas, inventario con descuento automático por pedido
   (hay campos de existencia/mínimo/caducidad pero **sin** descuento ni alertas de stock), reportes de rentabilidad por periodo.
 - Impuestos no modelados (se decidió no asumir tasas); el precio es el que cobras.
 - Sin pruebas automáticas de componentes ni de accesibilidad; el E2E cubre el flujo principal, no cada filtro.
