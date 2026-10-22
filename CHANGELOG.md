@@ -15,7 +15,7 @@ Todos los cambios relevantes de Recetario se anotan aquí. Formato basado en [Ke
 - **Escritorio:** el menú «+» se abría encima de la barra de pestañas lateral y se mezclaban. Ahora se abre a su derecha.
 
 ### Agregado
-- Recorrido E2E `app/e2e/sheet.mjs` (31 comprobaciones, teléfono y escritorio): el panel cubre exactamente la pantalla, se ve completo, el fondo cubre todo, la página no salta y el menú «+» no se encima con la barra. Falla (13 comprobaciones) sobre el código anterior.
+- Recorrido E2E `app/e2e/sheet.mjs` (28 comprobaciones, teléfono y escritorio): el panel cubre exactamente la pantalla, se ve completo, el fondo cubre todo, la página no salta y el menú «+» no se encima con la barra. Falla (13 comprobaciones) sobre el código anterior.
 
 ## [1.3.0] — 2026-10-22
 
