@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useId, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { parseNum } from '../domain/money'
 
 const P: Record<string, string> = {
@@ -33,7 +34,9 @@ export function Sheet({ title, onClose, children, footer }: { title: string; onC
     addEventListener('keydown', k)
     return () => removeEventListener('keydown', k)
   }, [onClose])
-  return (
+  // En `body` y no dentro de la página: así ningún contenedor con transform, filter o animación puede convertirse en el «marco» del
+  // `position: fixed` y desplazar el panel al fondo del contenido (era el caso de `.page`, ver index.css).
+  return createPortal(
     <div className="sheet-wrap">
       <div className="scrim" onClick={onClose} />
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title}>
@@ -44,7 +47,8 @@ export function Sheet({ title, onClose, children, footer }: { title: string; onC
         <div className="sheet-body">{children}</div>
         {footer && <div className="sheet-foot">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
