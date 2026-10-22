@@ -104,6 +104,7 @@ a { color: var(--accent-strong); }
 .badge.ok { background: var(--ok-soft); color: var(--ok); } .badge.warn { background: var(--warn-soft); color: var(--warn); } .badge.bad { background: var(--bad-soft); color: var(--bad); } .badge.pink { background: var(--accent-soft); color: var(--accent-strong); }
 .banner { padding: 10px 14px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--warn); font-size: 0.9rem; }
 .banner.bad { background: var(--bad-soft); color: var(--bad); } .banner.ok { background: var(--ok-soft); color: var(--ok); }
+a.banner, button.banner { display: block; text-decoration: none; border: 0; text-align: left; width: 100%; cursor: pointer; font: inherit; font-size: 0.9rem; }
 .empty { text-align: center; padding: var(--s6) var(--s4); color: var(--text-2); }
 .empty h3 { color: var(--text); margin-bottom: 4px; }
 

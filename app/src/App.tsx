@@ -9,6 +9,7 @@ import { Recetas } from './pages/Recetas'
 import { Resumen } from './pages/Resumen'
 import { SheetHost, useOpen } from './ui/create'
 import { useData } from './ui/data'
+import { DriveBanner, DriveSyncProvider } from './ui/drive'
 import { Icon, UiProvider } from './ui/ui'
 
 const TABS = [['/', 'Resumen', 'home'], ['/recetas', 'Recetas', 'cake'], ['/ingredientes', 'Ingredientes', 'jar'], ['/pedidos', 'Pedidos', 'bag'], ['/finanzas', 'Finanzas', 'chart'], ['/ajustes', 'Ajustes', 'gear']] as const
@@ -63,6 +64,7 @@ function Shell() {
           {TABS.map(([to, l, ic]) => <NavLink key={to} to={to} end={to === '/'} aria-label={l} className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><Icon n={ic} size={22} /><span className="full">{l}</span><span className="short" aria-hidden="true">{l === 'Ingredientes' ? 'Ingred.' : l}</span></NavLink>)}
         </nav>
         <main className="main">
+          <DriveBanner />
           <div className="page" key={loc.pathname}>
           <Routes>
             <Route path="/" element={<Resumen data={data} />} />
@@ -82,5 +84,5 @@ function Shell() {
 }
 
 export default function App() {
-  return <HashRouter><UiProvider><Shell /></UiProvider></HashRouter>
+  return <HashRouter><UiProvider><DriveSyncProvider><Shell /></DriveSyncProvider></UiProvider></HashRouter>
 }
