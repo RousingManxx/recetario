@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6efe6">
+<title>Política de privacidad · Recetario</title>
+<style>
+  :root { --bg: #f6efe6; --fg: #3b2a2a; --muted: #6f5d5d; --card: #ffffff; --line: #e5d9cb; --accent: #a8416b; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1d1618; --fg: #f1e7e3; --muted: #b9a6a6; --card: #271d20; --line: #3b2c30; --accent: #f08fb3; } }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 20px 8px; }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; } h2 { margin: 24px 0 6px; font-size: 1.1rem; }
+  p, li { margin: 6px 0; } .muted { color: var(--muted); font-size: 0.9rem; }
+  a { color: var(--accent); } code { background: var(--bg); padding: 1px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="./">← Volver a Recetario</a></p>
+  <div class="card">
+    <h1>Política de privacidad de Recetario</h1>
+    <p class="muted">Última actualización: 22 de octubre de 2026</p>
+
+    <h2>Qué es Recetario</h2>
+    <p>Recetario es una aplicación web instalable (PWA) para la gestión de una pastelería: recetas, ingredientes, costos, pedidos, clientes, gastos y ganancias.</p>
+
+    <h2>Dónde se guardan tus datos</h2>
+    <p>Los datos de tu pastelería se guardan <b>únicamente en tu propio dispositivo</b> (en el almacenamiento del navegador). Recetario no tiene servidores propios que reciban, almacenen o procesen esa información, no usa herramientas de analítica ni de publicidad y no vende ni comparte datos con terceros.</p>
+
+    <h2>Respaldo opcional en Google Drive</h2>
+    <p>Si decides conectar Google Drive desde <i>Ajustes → Respaldo en Google Drive</i>, Recetario te pedirá autorización con tu cuenta de Google para usar un único permiso:</p>
+    <ul>
+      <li><code>https://www.googleapis.com/auth/drive.file</code>: permite crear y actualizar <b>solo los archivos que la propia aplicación crea</b>. Recetario no puede ver, listar ni leer el resto de tus archivos de Drive.</li>
+    </ul>
+    <p>Qué hace con ese permiso: crea y mantiene un archivo de respaldo con nombre fijo en tu «Mi unidad» y consulta si hay una versión más nueva. Los datos viajan directamente desde tu dispositivo a tu Google Drive; <b>el desarrollador de Recetario no los recibe ni tiene acceso a ellos</b>. El archivo de respaldo es un JSON legible que incluye las recetas, costos, pedidos y clientes de tu pastelería, por lo que conviene proteger tu cuenta de Google.</p>
+    <p>El token de acceso que entrega Google se mantiene solo en la memoria del navegador y no se envía a ningún otro lugar.</p>
+
+    <h2>Uso de los datos de usuario de Google</h2>
+    <p>El uso y la transferencia a cualquier otra aplicación de la información recibida de las API de Google se apegará a la <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de datos de usuario de los servicios de API de Google</a>, incluidos los requisitos de uso limitado. Los datos de Drive se usan únicamente para ofrecer la función de respaldo descrita; no se usan para publicidad, no se transfieren a terceros y ninguna persona los lee.</p>
+
+    <h2>Cómo retirar el acceso y borrar tus datos</h2>
+    <ul>
+      <li>En Recetario: <i>Ajustes → Respaldo en Google Drive → Desconectar</i> (se revoca el acceso).</li>
+      <li>En Google: revisa y quita el acceso en <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+      <li>Elimina el archivo de respaldo directamente desde tu Google Drive cuando quieras.</li>
+      <li>Para borrar los datos locales, elimina los datos del sitio desde la configuración de tu navegador o desinstala la aplicación.</li>
+    </ul>
+
+    <h2>Cambios y contacto</h2>
+    <p>Si esta política cambia, se actualizará esta página con una nueva fecha. Para dudas o solicitudes, abre una incidencia en <a href="https://github.com/RousingManxx/recetario/issues">github.com/RousingManxx/recetario/issues</a>.</p>
+  </div>
+</main>
+</body>
+</html>
