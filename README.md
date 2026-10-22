@@ -14,6 +14,8 @@ npm run build        # producción en app/dist
 npx vite preview --port 4173 ; npm run e2e   # E2E con Edge (Playwright) sobre el build
 ```
 
+Historial de versiones: `CHANGELOG.md`. Respaldo en Google Drive (opcional): `app/docs/DRIVE.md`.
+
 ## Instalar en tu iPhone (desde Windows, sin Mac)
 
 Estado real: **la instalación en iPhone no se ha probado** (no hay iPhone/Safari iOS en este entorno).
