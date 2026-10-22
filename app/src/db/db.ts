@@ -15,6 +15,9 @@ export class AppDB extends Dexie {
   tools!: Table<Tool, string>
   settings!: Table<Settings, string>
 
+  /** Se invoca en cada escritura de datos; lo usa la sincronización con Drive para saber que hay cambios sin subir. */
+  onChange: (() => void) | null = null
+
   constructor(name = 'recetasapp') {
     super(name)
     this.version(1).stores({
@@ -28,6 +31,8 @@ export class AppDB extends Dexie {
     })
     // v2: herramientas (tabla nueva; los datos existentes no cambian).
     this.version(2).stores({ tools: 'id, name' })
+    const changed = () => { this.onChange?.() }
+    for (const t of this.tables) { t.hook('creating', changed); t.hook('updating', changed); t.hook('deleting', changed) }
   }
 }
 
@@ -106,9 +111,10 @@ export async function snapshot(d = db): Promise<Snapshot> {
   return { ingredients, purchases, recipes, customers, orders, expenses, tools, settings: settings ?? null }
 }
 
-export async function createBackup(d = db): Promise<BackupFile> {
+/** `touch: false` no registra la fecha de «última copia» (subidas automáticas a Drive). */
+export async function createBackup(d = db, o: { touch?: boolean } = {}): Promise<BackupFile> {
   const now = new Date()
-  await saveSettings({ lastBackupAt: now.toISOString() }, d)
+  if (o.touch !== false) await saveSettings({ lastBackupAt: now.toISOString() }, d)
   return buildBackup(await snapshot(d), now)
 }
 

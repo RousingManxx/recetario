@@ -8,6 +8,7 @@ import { formatMXN } from '../domain/money'
 import type { LaborMode } from '../domain/types'
 import { useOpen } from '../ui/create'
 import { download, fmtDateTime, todayISO, type Data } from '../ui/data'
+import { DriveSettings } from '../ui/drive'
 import { Badge, Field, NumInput, Sheet, useUi } from '../ui/ui'
 
 export function Ajustes({ data }: { data: Data }) {
@@ -85,6 +86,8 @@ export function Ajustes({ data }: { data: Data }) {
         <button className="btn" onClick={() => file.current?.click()}>Elegir archivo de respaldo…</button>
         {result && <div className={`banner ${result.startsWith('Error') ? 'bad' : 'ok'}`} role="status">{result}</div>}
       </section>
+
+      <DriveSettings data={data} />
 
       <section className="stack">
         <h2>Exportar a CSV (Excel)</h2>
