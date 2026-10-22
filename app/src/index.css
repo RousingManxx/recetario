@@ -80,6 +80,8 @@ a { color: var(--accent-strong); }
 }
 
 .menu { background: rgba(255, 250, 243, 0.9); position: fixed; top: calc(var(--sat) + 62px); left: var(--s4); z-index: 40; border-radius: var(--r-md); padding: 6px; min-width: 220px; animation: pop 0.18s ease-out; transform-origin: top left; }
+/* Escritorio: la barra de pestañas es vertical en el borde izquierdo (16–108 px); el menú «+» se abre a su derecha para no encimarse con ella. */
+@media (min-width: 900px) { .menu { left: 124px; } }
 .menu button { display: flex; gap: 10px; align-items: center; width: 100%; background: none; border: 0; padding: 12px; border-radius: 12px; cursor: pointer; text-align: left; position: relative; }
 .menu button:hover, .menu button:focus-visible { background: var(--accent-soft); outline: none; }
 @media (prefers-color-scheme: dark) { .menu { background: rgba(50, 37, 32, 0.92); } }
@@ -150,7 +152,10 @@ textarea { min-height: 80px; resize: vertical; }
 @keyframes pop-in { 0% { transform: scale(0.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 16px) scale(0.96); } }
 @keyframes tab-in { from { transform: translate(-50%, 90px); opacity: 0; } }
-.page { animation: rise 0.38s cubic-bezier(.2,.8,.2,1) both; }
+/* `backwards` y no `both`: con `forwards` la página conservaba la transformación de la animación al terminar y se volvía el «marco» de todo
+   `position: fixed` que lleve dentro (los paneles de Ajustes y Finanzas), que aparecían al fondo del contenido en vez de sobre la pantalla.
+   `position: relative` mantiene a `.page` como marco de lo `position: absolute`, como lo era por accidente con la transformación. */
+.page { position: relative; animation: rise 0.38s cubic-bezier(.2,.8,.2,1) backwards; }
 .page .item, .page .stat, .page .card, .page .banner, .page .empty { animation: rise 0.45s cubic-bezier(.2,.8,.2,1) backwards; }
 .page :is(.item, .stat, .card, .banner):nth-child(2) { animation-delay: 0.04s; }
 .page :is(.item, .stat, .card, .banner):nth-child(3) { animation-delay: 0.08s; }

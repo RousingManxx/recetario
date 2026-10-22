@@ -8,6 +8,15 @@ Todos los cambios relevantes de Recetario se anotan aquí. Formato basado en [Ke
 
 ## [Sin publicar]
 
+## [1.3.1] — 2026-10-22
+
+### Corregido
+- **Paneles que aparecían fuera de la pantalla (teléfono y escritorio).** Al abrir «Ver formato» o la revisión de una copia en Ajustes, o al tocar una cifra clave en Finanzas, la pantalla se oscurecía pero el panel quedaba al final del contenido (centenares de píxeles más abajo) y no se veía; además el fondo oscuro solo cubría la columna de la página y dejaba franjas claras a los lados. Causa: la animación de entrada de cada página conservaba una transformación al terminar, y eso hacía que el panel (`position: fixed`) se midiera contra la página y no contra la pantalla. Ahora los paneles se dibujan directamente en `body` y la animación ya no deja transformación (`fill-mode: backwards`). Los formularios (receta, ingrediente, pedido, cliente, gasto, herramienta) no estaban afectados porque ya se dibujaban fuera de la página.
+- **Escritorio:** el menú «+» se abría encima de la barra de pestañas lateral y se mezclaban. Ahora se abre a su derecha.
+
+### Agregado
+- Recorrido E2E `app/e2e/sheet.mjs` (28 comprobaciones, teléfono y escritorio): el panel cubre exactamente la pantalla, se ve completo, el fondo cubre todo, la página no salta y el menú «+» no se encima con la barra. Falla (13 comprobaciones) sobre el código anterior.
+
 ## [1.3.0] — 2026-10-22
 
 ### Agregado
