@@ -97,7 +97,7 @@ expect((await p.locator('.donut-l').innerText()).includes('Herramientas (desgast
 await p.getByRole('link', { name: 'Ajustes' }).click()
 const [bk] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'Descargar copia' }).click()])
 const json = JSON.parse(fs.readFileSync(await bk.path(), 'utf8'))
-expect(json.schemaVersion === 2 && json.tools.length === 1 && json.recipes[0].toolWearPct === 10, 'Respaldo v2 incluye la herramienta y el uso de herramientas de la receta')
+expect(json.schemaVersion === 3 && json.tools.length === 1 && json.recipes[0].toolWearPct === 10, 'Respaldo v3 incluye la herramienta y el uso de herramientas de la receta')
 const [cv] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'Herramientas', exact: true }).click()])
 expect(fs.readFileSync(await cv.path(), 'utf8').includes('Tapete de silicón'), 'CSV de herramientas')
 const [cv0] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'Recetas', exact: true }).click()])

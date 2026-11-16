@@ -165,17 +165,17 @@ export function buildSeries(c: Ctx, r: Range, g: Granularity, f: Filters): Point
 }
 
 /* ---------- Distribución de costos ---------- */
-export type CostKey = 'ingredients' | 'tools' | 'labor' | 'energy' | 'packaging' | 'other' | 'commission' | 'adjustments' | 'unknown'
+export type CostKey = 'ingredients' | 'recipeComponents' | 'tools' | 'labor' | 'energy' | 'packaging' | 'other' | 'commission' | 'adjustments' | 'unknown'
 export const COST_LABEL: Record<CostKey, string> = {
-  ingredients: 'Ingredientes (con merma)', tools: 'Herramientas (desgaste)', labor: 'Mano de obra', energy: 'Energía', packaging: 'Empaque', other: 'Otros costos de receta',
+  ingredients: 'Ingredientes (con merma)', recipeComponents: 'Recetas componentes', tools: 'Herramientas (desgaste)', labor: 'Mano de obra', energy: 'Energía', packaging: 'Empaque', other: 'Otros costos de receta',
   commission: 'Comisiones', adjustments: 'Ajustes de pedidos', unknown: 'Sin desglose (pedidos anteriores)',
 }
 export function costDistribution(c: Ctx, r: Range, f: Filters): { key: CostKey; label: string; cents: number; pct: number }[] {
-  const acc: Record<CostKey, number> = { ingredients: 0, tools: 0, labor: 0, energy: 0, packaging: 0, other: 0, commission: 0, adjustments: 0, unknown: 0 }
+  const acc: Record<CostKey, number> = { ingredients: 0, recipeComponents: 0, tools: 0, labor: 0, energy: 0, packaging: 0, other: 0, commission: 0, adjustments: 0, unknown: 0 }
   for (const o of saleOrdersIn(c, r, f)) {
     for (const x of lineFigs(o, c, f)) {
       acc.commission += x.commission
-      if (x.shares) for (const k of ['ingredients', 'tools', 'labor', 'energy', 'packaging', 'other'] as const) acc[k] += x.lineCost * (x.shares[k] ?? 0)
+      if (x.shares) for (const k of ['ingredients', 'recipeComponents', 'tools', 'labor', 'energy', 'packaging', 'other'] as const) acc[k] += x.lineCost * (x.shares[k] ?? 0)
       else acc.unknown += x.lineCost
     }
     if (!hasLineFilter(f)) acc.adjustments += o.adjustments.reduce((s, a) => s + a.amountCents, 0)

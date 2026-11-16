@@ -53,6 +53,7 @@ export interface Tool extends Flagged {
 export interface ToolUse { toolId: string; /** % del precio de la herramienta que consume una tanda (0–100). */ pct: number }
 
 export interface RecipeComponent { ingredientId: string; qty: number; unit: Unit }
+export interface RecipeComponentRef { recipeId: string; qty: number }
 
 export type RecipeKind = 'producto' | 'pastel' | 'porcion' | 'caja' | 'paquete' | 'personalizado'
 export type LaborMode = 'hora' | 'minuto' | 'operacion'
@@ -66,6 +67,8 @@ export interface Recipe extends Flagged {
   description: string
   favorite: boolean
   components: RecipeComponent[]
+  /** Cantidad de unidades vendibles de otras recetas que usa una tanda. */
+  recipeComponents?: RecipeComponentRef[]
   /** Desgaste de herramientas por tanda. Opcional: recetas anteriores no lo tienen. */
   toolUses?: ToolUse[]
   /** Uso de herramientas: % sobre el costo de la receta (ingredientes, merma, mano de obra, energía, otros y empaque). Opcional. */
@@ -114,7 +117,16 @@ export type OrderStatus = 'cotizacion' | 'confirmado' | 'preparacion' | 'listo' 
 export type PaymentMethod = 'efectivo' | 'transferencia' | 'tarjeta' | 'otro'
 export type PaymentStatus = 'sin_pago' | 'anticipo' | 'parcial' | 'pagado' | 'reembolsado'
 
-export interface CostShares { ingredients: number; labor: number; energy: number; packaging: number; other: number; /** Opcional: pedidos anteriores no lo tienen. */ tools?: number }
+export interface CostShares {
+  ingredients: number
+  labor: number
+  energy: number
+  packaging: number
+  other: number
+  /** Opcionales: pedidos anteriores no los tienen. */
+  tools?: number
+  recipeComponents?: number
+}
 
 export interface OrderLine {
   id: string
@@ -122,6 +134,10 @@ export interface OrderLine {
   name: string
   qty: number
   unitPriceCents: number
+  /** Precio personalizado en la cotización; ausente significa que sigue el precio de la receta. */
+  priceOverrideCents?: number
+  /** Campo legado de cotizaciones guardadas antes de almacenar el precio personalizado. */
+  priceOverride?: boolean
   /** Costo unitario congelado. En cotización se refresca; al confirmar queda fijo. */
   unitCostCents: number
   commissionPct: number
@@ -151,6 +167,8 @@ export interface Order extends Flagged {
   lines: OrderLine[]
   discountCents: number
   deliveryFeeCents: number
+  /** Margen neto sobre venta aplicado a todas las líneas de la cotización; ausente = precio por receta. */
+  orderMarginPct?: number
   payments: Payment[]
   adjustments: CostAdjustment[]
   message: string

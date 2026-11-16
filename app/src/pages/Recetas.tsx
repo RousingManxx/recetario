@@ -16,9 +16,17 @@ export function Recetas({ data }: { data: Data }) {
   const list = data.recipes
     .filter((r) => r.name.toLowerCase().includes(q.toLowerCase()) && (!cat || r.category === cat) && (!favs || r.favorite))
     .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  const canCombine = [data.recipes.filter((r) => !r.demo), data.recipes.filter((r) => r.demo)].some((group) => group.length >= 2)
   return (
     <div className="stack">
-      <div className="page-head"><h1>Recetas</h1><button className="btn primary" onClick={() => open({ k: 'recipe' })}>+ Nueva</button></div>
+      <div className="page-head">
+        <h1>Recetas</h1>
+        <div className="row wrap">
+          <button className="btn" disabled={!canCombine} onClick={() => open({ k: 'recipe', compose: true })}>Combinar recetas</button>
+          <button className="btn primary" onClick={() => open({ k: 'recipe' })}>+ Nueva receta</button>
+        </div>
+      </div>
+      <p className="small muted">«Nueva receta» es para definir ingredientes y costos; «Combinar recetas» crea una receta a partir de otras ya guardadas.</p>
       <div className="row">
         <div className="grow" style={{ position: 'relative' }}><input aria-label="Buscar receta" placeholder="Buscar…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
         <select aria-label="Categoría" value={cat} onChange={(e) => setCat(e.target.value)} style={{ width: 150 }}><option value="">Todas</option>{categoriesOf(data.recipes).map((c) => <option key={c}>{c}</option>)}</select>
@@ -27,7 +35,7 @@ export function Recetas({ data }: { data: Data }) {
       {data.recipes.length === 0 ? (
         <Empty title="Aún no tienes recetas" text="Calcula cuánto cuesta cada producto y qué precio cobrar." action={<button className="btn primary" onClick={() => open({ k: 'recipe' })}>Crear mi primera receta</button>} />
       ) : list.length === 0 ? <Empty title="Sin resultados" text="Prueba con otra búsqueda o filtro." /> : list.map((r) => {
-        const c = recipeCost(r, data.ingMap, data.toolMap)
+        const c = recipeCost(r, data.ingMap, data.toolMap, data.recipeMap)
         const a = r.priceCents != null ? analyzePrice(r.priceCents, c.unitCostCents, r.commissionPct) : null
         return (
           <div key={r.id} className="item" onClick={() => open({ k: 'recipe', v: r })} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && open({ k: 'recipe', v: r })}>

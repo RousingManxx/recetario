@@ -18,12 +18,15 @@ export interface CostBreakdown {
   otherCents: number
   packagingCents: number
   toolsCents: number
+  recipeComponentsCents: number
   totalCents: number
   usableUnits: number
   unitCostCents: number
   portionCostCents: number
   missing: string[]
   missingTools: string[]
+  missingRecipes: string[]
+  recipeCycle: boolean
 }
 
 export function ingredientLineCost(ing: Ingredient, qty: number, unit: Recipe['components'][number]['unit']): number {
@@ -34,9 +37,17 @@ export function ingredientLineCost(ing: Ingredient, qty: number, unit: Recipe['c
  * Costo de producción de una tanda. Merma de ingredientes se suma al costo de ingredientes; merma de
  * producto terminado reduce las unidades vendibles. Cada rubro indirecto usa UN solo modo (sin duplicar).
  */
-export function recipeCost(r: Recipe, ings: Map<string, Ingredient>, tools: Map<string, Tool> = new Map()): CostBreakdown {
+function calculateRecipeCost(
+  r: Recipe,
+  ings: Map<string, Ingredient>,
+  tools: Map<string, Tool>,
+  recipes: Map<string, Recipe>,
+  componentPath: Set<string>,
+): CostBreakdown {
+  componentPath.add(r.id)
   const missing: string[] = []
   const missingTools: string[] = []
+  const missingRecipes: string[] = []
   let toolsRaw = 0
   for (const u of r.toolUses ?? []) {
     const t = tools.get(u.toolId)
@@ -50,6 +61,21 @@ export function recipeCost(r: Recipe, ings: Map<string, Ingredient>, tools: Map<
     if (!ing) { missing.push(c.ingredientId); continue }
     raw += ingredientLineCost(ing, c.qty, c.unit)
   }
+  let recipeComponentsRaw = 0
+  let recipeCycle = false
+  const addRecipeComponent = (recipeId: string, qty: number) => {
+    if (componentPath.has(recipeId)) { recipeCycle = true; return }
+    const component = recipes.get(recipeId)
+    if (!component) { missingRecipes.push(recipeId); return }
+    const componentCost = calculateRecipeCost(component, ings, tools, recipes, componentPath)
+    recipeComponentsRaw += qty * componentCost.unitCostCents
+    missing.push(...componentCost.missing)
+    missingTools.push(...componentCost.missingTools)
+    missingRecipes.push(...componentCost.missingRecipes)
+    recipeCycle ||= componentCost.recipeCycle
+  }
+  for (const c of r.recipeComponents ?? []) addRecipeComponent(c.recipeId, c.qty)
+  const recipeComponentsCents = round(recipeComponentsRaw)
   const waste = raw * (r.ingredientWastePct / 100)
   const ingredientsCents = round(raw)
   const wasteCents = round(raw + waste) - ingredientsCents
@@ -65,17 +91,28 @@ export function recipeCost(r: Recipe, ings: Map<string, Ingredient>, tools: Map<
   const packagingCents = round(r.packagingCentsPerUnit * usableUnits)
   const laborCents = round(labor), energyCents = round(energy)
   // Uso de herramientas general: % sobre el costo de la receta antes de herramientas. Se suma al desgaste por herramienta (recetas antiguas).
-  const subtotal = ingredientsCents + wasteCents + laborCents + energyCents + r.otherCents + packagingCents
+  const subtotal = ingredientsCents + wasteCents + recipeComponentsCents + laborCents + energyCents + r.otherCents + packagingCents
   const wearCents = round((subtotal * Math.min(Math.max(r.toolWearPct ?? 0, 0), 100)) / 100)
   const toolsTotal = toolsCents + wearCents
   const totalCents = subtotal + toolsTotal
   const unitCostCents = usableUnits > 0 ? round(totalCents / usableUnits) : 0
+  componentPath.delete(r.id)
   return {
     ingredientsCents, wasteCents, laborCents, energyCents, otherCents: r.otherCents, packagingCents, toolsCents: toolsTotal,
+    recipeComponentsCents,
     totalCents, usableUnits, unitCostCents,
     portionCostCents: r.portionsPerUnit > 0 ? round(unitCostCents / r.portionsPerUnit) : unitCostCents,
-    missing, missingTools,
+    missing, missingTools, missingRecipes, recipeCycle,
   }
+}
+
+export function recipeCost(
+  r: Recipe,
+  ings: Map<string, Ingredient>,
+  tools: Map<string, Tool> = new Map(),
+  recipes: Map<string, Recipe> = new Map(),
+): CostBreakdown {
+  return calculateRecipeCost(r, ings, tools, recipes, new Set())
 }
 
 export const totalMinutes = (r: Recipe): number => r.totalMin ?? r.activeMin + r.bakeMin + r.restMin

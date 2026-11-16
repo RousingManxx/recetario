@@ -1,6 +1,7 @@
 import type { CostShares, Ingredient, Order, OrderLine, OrderStatus, PaymentStatus, Recipe, Tool } from './types'
 import { recipeCost, type CostBreakdown } from './costing'
 import { round } from './money'
+import { priceForMargin } from './pricing'
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   cotizacion: 'Cotización', confirmado: 'Confirmado', preparacion: 'En preparación',
@@ -52,11 +53,25 @@ export function paymentStatus(o: Order): PaymentStatus {
 export function sharesOf(c: CostBreakdown): CostShares | undefined {
   if (c.totalCents <= 0) return undefined
   const t = c.totalCents
-  return { ingredients: (c.ingredientsCents + c.wasteCents) / t, labor: c.laborCents / t, energy: c.energyCents / t, packaging: c.packagingCents / t, other: c.otherCents / t, tools: c.toolsCents / t }
+  return {
+    ingredients: (c.ingredientsCents + c.wasteCents) / t,
+    labor: c.laborCents / t,
+    energy: c.energyCents / t,
+    packaging: c.packagingCents / t,
+    other: c.otherCents / t,
+    tools: c.toolsCents / t,
+    recipeComponents: c.recipeComponentsCents / t,
+  }
 }
 
-export function lineFromRecipe(r: Recipe, ings: Map<string, Ingredient>, qty = 1, tools?: Map<string, Tool>): OrderLine {
-  const c = recipeCost(r, ings, tools)
+export function lineFromRecipe(
+  r: Recipe,
+  ings: Map<string, Ingredient>,
+  qty = 1,
+  tools?: Map<string, Tool>,
+  recipes?: Map<string, Recipe>,
+): OrderLine {
+  const c = recipeCost(r, ings, tools, recipes)
   return {
     id: crypto.randomUUID(), recipeId: r.id, name: r.name, qty,
     unitPriceCents: r.priceCents ?? 0, unitCostCents: c.unitCostCents, costShares: sharesOf(c),
@@ -87,7 +102,7 @@ export function transition(
     lines = o.lines.map((l) => {
       const r = recipes.get(l.recipeId)
       if (!r) return l
-      const c = recipeCost(r, ings, tools)
+      const c = recipeCost(r, ings, tools, recipes)
       return { ...l, unitCostCents: c.unitCostCents, costShares: sharesOf(c), commissionPct: r.commissionPct }
     })
     confirmedAt = now.toISOString()
@@ -101,9 +116,23 @@ export function refreshQuote(o: Order, recipes: Map<string, Recipe>, ings: Map<s
   return { ...o, lines: o.lines.map((l) => {
     const r = recipes.get(l.recipeId)
     if (!r) return l
-    const c = recipeCost(r, ings, tools)
-    return { ...l, unitCostCents: c.unitCostCents, costShares: sharesOf(c) }
+    const c = recipeCost(r, ings, tools, recipes)
+    const marginPrice = o.orderMarginPct == null ? undefined : priceForMargin(c.unitCostCents, o.orderMarginPct, r.commissionPct)
+    const priceOverrideCents = l.priceOverrideCents ?? (l.priceOverride ? l.unitPriceCents : undefined)
+    return {
+      ...l, name: r.name, priceOverride: undefined, priceOverrideCents,
+      unitPriceCents: o.orderMarginPct != null ? marginPrice ?? l.unitPriceCents : priceOverrideCents ?? r.priceCents ?? 0,
+      unitCostCents: c.unitCostCents, commissionPct: r.commissionPct, costShares: sharesOf(c),
+    }
   }) }
+}
+
+export function orderMarginError(o: Order): string | null {
+  const margin = o.orderMarginPct
+  if (margin == null) return null
+  if (!Number.isFinite(margin) || margin < 0) return 'El margen del pedido debe ser un porcentaje válido mayor o igual a cero.'
+  const invalid = o.lines.find((l) => priceForMargin(l.unitCostCents, margin, l.commissionPct) == null)
+  return invalid ? `El margen del pedido no se puede aplicar a «${invalid.name}» con su comisión. Usa un margen menor.` : null
 }
 
 export const formatFolio = (n: number) => `PED-${String(n).padStart(4, '0')}`

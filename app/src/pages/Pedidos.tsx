@@ -1,20 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { saveOrder } from '../db/db'
 import { formatMXN } from '../domain/money'
-import { orderTotals, PAYMENT_LABEL, paymentStatus, STATUS_LABEL } from '../domain/orders'
+import { orderMarginError, orderTotals, PAYMENT_LABEL, paymentStatus, refreshQuote, STATUS_LABEL } from '../domain/orders'
 import type { Order, OrderStatus, PaymentMethod, PaymentStatus } from '../domain/types'
 import { useOpen } from '../ui/create'
 import { fmtDateTime, type Data } from '../ui/data'
 import { payTone, statusTone } from '../ui/forms/OrderSheet'
-import { Badge, Empty, Seg } from '../ui/ui'
+import { Badge, Empty, Seg, useUi } from '../ui/ui'
 
 function OrderRow({ o, onClick }: { o: Order; onClick: () => void }) {
   const t = orderTotals(o), ps = paymentStatus(o)
+  const marginError = orderMarginError(o)
   return (
     <button className="item" onClick={onClick}>
       <div className="grow">
         <div className="row wrap" style={{ gap: 6 }}><b>{o.customerName}</b><span className="small muted">{o.folio}</span>{o.demo && <Badge tone="pink">demo</Badge>}</div>
         <div className="small muted">Entrega {fmtDateTime(o.deliveryAt)} · {o.lines.reduce((s, l) => s + l.qty, 0)} pza</div>
-        <div className="row wrap" style={{ gap: 6, marginTop: 4 }}><Badge tone={statusTone(o.status)}>{STATUS_LABEL[o.status]}</Badge><Badge tone={payTone(ps)}>{PAYMENT_LABEL[ps]}</Badge></div>
+        <div className="row wrap" style={{ gap: 6, marginTop: 4 }}><Badge tone={statusTone(o.status)}>{STATUS_LABEL[o.status]}</Badge><Badge tone={payTone(ps)}>{PAYMENT_LABEL[ps]}</Badge>{marginError && <Badge tone="warn">Revisar margen</Badge>}</div>
       </div>
       <div className="right num"><b>{formatMXN(t.totalCents)}</b>{t.balanceCents > 0 && o.status !== 'cancelado' && <div className="small" style={{ color: 'var(--warn)' }}>debe {formatMXN(t.balanceCents)}</div>}</div>
     </button>
@@ -23,6 +25,23 @@ function OrderRow({ o, onClick }: { o: Order; onClick: () => void }) {
 
 export function Pedidos({ data }: { data: Data }) {
   const open = useOpen()
+  const ui = useUi()
+  const currentOrders = useMemo(
+    () => data.orders.map((o) => refreshQuote(o, data.recipeMap, data.ingMap, data.toolMap)),
+    [data.orders, data.recipeMap, data.ingMap, data.toolMap],
+  )
+  const quotesToRefresh = useMemo(
+    () => currentOrders.filter((o, i) => o.status === 'cotizacion' && !orderMarginError(o) && JSON.stringify(o.lines) !== JSON.stringify(data.orders[i].lines)),
+    [currentOrders, data.orders],
+  )
+  useEffect(() => {
+    if (!quotesToRefresh.length) return
+    let active = true
+    void Promise.all(quotesToRefresh.map((o) => saveOrder(o))).catch((e) => {
+      if (active) ui.toast(`No se pudieron actualizar las cotizaciones: ${(e as Error).message}`, true)
+    })
+    return () => { active = false }
+  }, [quotesToRefresh, ui])
   const [view, setView] = useState<'lista' | 'agenda' | 'clientes'>('lista')
   const [q, setQ] = useState('')
   const [st, setSt] = useState<'' | OrderStatus>('')
@@ -31,7 +50,7 @@ export function Pedidos({ data }: { data: Data }) {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
 
-  const list = data.orders.filter((o) => {
+  const list = currentOrders.filter((o) => {
     const ql = q.toLowerCase()
     if (ql && !o.folio.toLowerCase().includes(ql) && !o.customerName.toLowerCase().includes(ql)) return false
     if (st && o.status !== st) return false
@@ -41,7 +60,7 @@ export function Pedidos({ data }: { data: Data }) {
     return (!from || d >= from) && (!to || d <= to)
   }).sort((a, b) => b.deliveryAt.localeCompare(a.deliveryAt))
 
-  const agenda = data.orders.filter((o) => ['confirmado', 'preparacion', 'listo'].includes(o.status)).sort((a, b) => a.deliveryAt.localeCompare(b.deliveryAt))
+  const agenda = currentOrders.filter((o) => ['confirmado', 'preparacion', 'listo'].includes(o.status)).sort((a, b) => a.deliveryAt.localeCompare(b.deliveryAt))
   const byDay = new Map<string, Order[]>()
   for (const o of agenda) { const k = new Date(o.deliveryAt).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }); byDay.set(k, [...(byDay.get(k) ?? []), o]) }
 
@@ -65,7 +84,7 @@ export function Pedidos({ data }: { data: Data }) {
             </div>
             <button className="btn small ghost" onClick={() => { setSt(''); setPay(''); setMethod(''); setFrom(''); setTo('') }}>Limpiar filtros</button>
           </details>
-          {data.orders.length === 0 ? <Empty title="Todavía no hay pedidos" text="Crea una cotización o un pedido a partir de tus recetas." action={<button className="btn primary" onClick={() => open({ k: 'order' })}>Crear pedido</button>} />
+          {currentOrders.length === 0 ? <Empty title="Todavía no hay pedidos" text="Crea una cotización o un pedido a partir de tus recetas." action={<button className="btn primary" onClick={() => open({ k: 'order' })}>Crear pedido</button>} />
             : list.length === 0 ? <Empty title="Sin resultados" text="Ningún pedido coincide con la búsqueda o los filtros." />
             : list.map((o) => <OrderRow key={o.id} o={o} onClick={() => open({ k: 'order', v: o })} />)}
         </>
@@ -78,7 +97,7 @@ export function Pedidos({ data }: { data: Data }) {
 
       {view === 'clientes' && (data.customers.length === 0 ? <Empty title="Aún no tienes clientes" text="Guárdalos para no escribir sus datos cada vez." action={<button className="btn primary" onClick={() => open({ k: 'customer' })}>Agregar cliente</button>} /> :
         [...data.customers].sort((a, b) => a.name.localeCompare(b.name, 'es')).map((c) => {
-          const os = data.orders.filter((o) => o.customerId === c.id && o.status !== 'cancelado' && o.status !== 'cotizacion')
+          const os = currentOrders.filter((o) => o.customerId === c.id && o.status !== 'cancelado' && o.status !== 'cotizacion')
           const total = os.reduce((s, o) => s + orderTotals(o).totalCents, 0)
           const pending = os.filter((o) => o.status !== 'entregado').length
           return (

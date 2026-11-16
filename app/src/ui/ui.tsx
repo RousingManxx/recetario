@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useId, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { parseNum } from '../domain/money'
 
@@ -107,10 +107,10 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [t, setT] = useState<{ m: string; bad?: boolean } | null>(null)
   const [c, setC] = useState<{ m: string; ok: string; res: (v: boolean) => void } | null>(null)
   const id = useId()
-  const ui: Ui = {
+  const ui = useMemo<Ui>(() => ({
     toast: (m, bad) => { setT({ m, bad }); setTimeout(() => setT(null), bad ? 5000 : 2600) },
     confirm: (m, ok = 'Confirmar') => new Promise((res) => setC({ m, ok, res })),
-  }
+  }), [])
   const done = (v: boolean) => { c?.res(v); setC(null) }
   return (
     <Ctx.Provider value={ui}>

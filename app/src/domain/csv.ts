@@ -40,13 +40,16 @@ export function exportCsvs(s: Snapshot, sep: ',' | ';' = ','): Record<string, st
     'recetas_ingredientes.csv': toCsv(
       ['receta_id', 'ingrediente_id', 'cantidad', 'unidad'],
       recs.flatMap((r) => r.components.map((c) => [r.id, c.ingredientId, c.qty, c.unit])), sep),
+    'recetas_componentes.csv': toCsv(
+      ['receta_id', 'receta_componente_id', 'cantidad_unidades_vendibles'],
+      recs.flatMap((r) => (r.recipeComponents ?? []).map((c) => [r.id, c.recipeId, c.qty])), sep),
     'recetas_herramientas.csv': toCsv(['receta_id', 'herramienta_id', 'porcentaje_de_uso_por_tanda'],
       recs.flatMap((r) => (r.toolUses ?? []).map((u) => [r.id, u.toolId, u.pct])), sep),
     'clientes.csv': toCsv(['id', 'nombre', 'telefono', 'correo', 'notas'],
       real(s.customers).map((c) => [c.id, c.name, c.phone, c.email, c.notes]), sep),
     'pedidos.csv': toCsv(
-      ['id', 'folio', 'cliente_id', 'cliente', 'creado', 'entrega', 'estado', 'estado_pago', 'total_mxn', 'pagado_mxn', 'saldo_mxn', 'costo_mxn', 'ganancia_estimada_mxn'],
-      ords.map((o) => { const t = orderTotals(o); return [o.id, o.folio, o.customerId, o.customerName, o.createdAt, o.deliveryAt, STATUS_LABEL[o.status], PAYMENT_LABEL[paymentStatus(o)], pesos(t.totalCents), pesos(t.paidCents), pesos(t.balanceCents), pesos(t.costCents), pesos(t.profitCents)] }), sep),
+      ['id', 'folio', 'cliente_id', 'cliente', 'creado', 'entrega', 'estado', 'estado_pago', 'margen_pedido_pct', 'total_mxn', 'pagado_mxn', 'saldo_mxn', 'costo_mxn', 'ganancia_estimada_mxn'],
+      ords.map((o) => { const t = orderTotals(o); return [o.id, o.folio, o.customerId, o.customerName, o.createdAt, o.deliveryAt, STATUS_LABEL[o.status], PAYMENT_LABEL[paymentStatus(o)], o.orderMarginPct, pesos(t.totalCents), pesos(t.paidCents), pesos(t.balanceCents), pesos(t.costCents), pesos(t.profitCents)] }), sep),
     'pedidos_lineas.csv': toCsv(
       ['pedido_id', 'folio', 'receta_id', 'producto', 'cantidad', 'precio_unitario_mxn', 'costo_unitario_mxn', 'personalizacion'],
       ords.flatMap((o) => o.lines.map((l) => [o.id, o.folio, l.recipeId, l.name, l.qty, pesos(l.unitPriceCents), pesos(l.unitCostCents), l.customization])), sep),

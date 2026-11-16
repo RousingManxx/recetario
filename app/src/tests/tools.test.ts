@@ -120,12 +120,15 @@ describe('finanzas con herramientas y gastos ya cobrados en recetas', () => {
 
 describe('respaldo, migración y CSV', () => {
   const empty = { ingredients: [], purchases: [], recipes: [], customers: [], orders: [], expenses: [], tools: [], settings: null }
-  it('el esquema es v2 y una copia v1 (sin herramientas) se migra', () => {
-    expect(SCHEMA_VERSION).toBe(2)
+  it('el esquema es v3 y las copias v1/v2 se migran', () => {
+    expect(SCHEMA_VERSION).toBe(3)
     const v1 = { ...buildBackup(empty), schemaVersion: 1 } as Record<string, unknown>
     delete v1.tools
     const rep = parseBackup(JSON.stringify(v1))
-    expect(rep.ok).toBe(true); expect(rep.data!.schemaVersion).toBe(2); expect(rep.data!.tools).toEqual([]); expect(rep.warnings.join()).not.toMatch(/tools/)
+    expect(rep.ok).toBe(true); expect(rep.data!.schemaVersion).toBe(3); expect(rep.data!.tools).toEqual([]); expect(rep.warnings.join()).not.toMatch(/tools/)
+    const v2 = { ...buildBackup(empty), schemaVersion: 2, recipes: [rec({ components: [], toolUses: undefined })] }
+    const migrated = parseBackup(JSON.stringify(v2))
+    expect(migrated.ok).toBe(true); expect(migrated.data!.recipes[0].recipeComponents).toEqual([])
   })
   it('rechaza recetas que usan herramientas inexistentes', () => {
     const b = buildBackup({ ...empty, ingredients: [ing()], recipes: [rec()] })
@@ -142,6 +145,19 @@ describe('respaldo, migración y CSV', () => {
     const f = exportCsvs({ ...empty, tools: [tool()], recipes: [rec()] })
     expect(f['herramientas.csv']).toContain('t1,Tapete,300.00')
     expect(f['recetas_herramientas.csv'].replace(/^﻿/, '').trim().split('\r\n')[1]).toBe('r1,t1,0.5')
+  })
+  it('respalda y exporta los vínculos entre recetas y rechaza ciclos', () => {
+    const base = rec({ id: 'base', components: [], toolUses: undefined })
+    const composed = rec({ id: 'compuesta', components: [], toolUses: undefined, recipeComponents: [{ recipeId: 'base', qty: 2 }] })
+    const valid = buildBackup({ ...empty, recipes: [base, composed] })
+    expect(parseBackup(JSON.stringify(valid)).ok).toBe(true)
+    expect(exportCsvs({ ...empty, recipes: [base, composed] })['recetas_componentes.csv']).toContain('compuesta,base,2')
+    const cycle = buildBackup({ ...empty, recipes: [
+      { ...base, recipeComponents: [{ recipeId: 'compuesta', qty: 1 }] }, composed,
+    ] })
+    expect(parseBackup(JSON.stringify(cycle)).errors.join()).toMatch(/circular/)
+    const demoRef = { ...valid, recipes: [{ ...base, demo: true }, { ...composed, recipeComponents: [{ recipeId: 'base', qty: 1 }] }] }
+    expect(parseBackup(JSON.stringify(demoRef)).errors.join()).toMatch(/demostración/)
   })
 })
 

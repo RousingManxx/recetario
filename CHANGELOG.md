@@ -8,6 +8,15 @@ Todos los cambios relevantes de Recetario se anotan aquí. Formato basado en [Ke
 
 ## [Sin publicar]
 
+### Agregado
+- Categoría **Tartas**, resumen del precio de venta en la receta y eliminación definitiva de pedidos con confirmación.
+- Recetas compuestas con cantidades de recetas componentes, costo recursivo por rendimiento, trazabilidad en respaldos/CSV y protección contra ciclos y borrado de componentes en uso.
+- Margen de ganancia propio por pedido: recalcula todas las líneas con los costos vigentes y la comisión de cada receta.
+
+### Corregido
+- Las cotizaciones abiertas se actualizan con el precio, costo y comisión vigentes de sus recetas. Los precios ajustados manualmente en una línea se conservan; los pedidos confirmados siguen congelados.
+- Se separaron visualmente los flujos de receta normal y receta compuesta para evitar mostrar controles de componentes en «Nueva receta».
+
 ## [1.3.1] — 2026-10-22
 
 ### Corregido

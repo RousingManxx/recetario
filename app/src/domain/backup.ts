@@ -1,6 +1,6 @@
 import type { Customer, Expense, Ingredient, Order, Purchase, Recipe, Settings, Tool } from './types'
 
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 export const FORMAT = 'recetasapp-backup'
 
 export interface Snapshot {
@@ -37,6 +37,13 @@ export function buildBackup(s: Snapshot, now = new Date()): BackupFile {
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
   // v1 → v2: se añadió la tabla de herramientas.
   1: (d) => ({ ...d, tools: Array.isArray(d.tools) ? d.tools : [] }),
+  // v2 → v3: recetas anteriores no tienen componentes de receta.
+  2: (d) => ({
+    ...d,
+    recipes: Array.isArray(d.recipes)
+      ? d.recipes.map((r) => isObj(r) ? { ...r, recipeComponents: Array.isArray(r.recipeComponents) ? r.recipeComponents : [] } : r)
+      : d.recipes,
+  }),
 }
 
 export interface ValidationReport {
@@ -81,8 +88,27 @@ export function parseBackup(text: string): ValidationReport {
   if (rep.errors.length) return rep
   const ids = (t: TableName) => new Set((d[t] as { id: string }[]).map((x) => x.id))
   const ing = ids('ingredients'), rec = ids('recipes'), cus = ids('customers'), tls = ids('tools')
+  const recipesById = new Map((d.recipes as Recipe[]).map((r) => [r.id, r]))
   for (const c of d.recipes as Recipe[])
     for (const k of c.components ?? []) if (!ing.has(k.ingredientId)) rep.errors.push(`Receta «${c.name}»: ingrediente inexistente (${k.ingredientId}).`)
+  for (const c of d.recipes as Recipe[])
+    for (const k of c.recipeComponents ?? []) {
+      if (!rec.has(k.recipeId)) rep.errors.push(`Receta «${c.name}»: receta componente inexistente (${k.recipeId}).`)
+      if (!(k.qty > 0) || !Number.isFinite(k.qty)) rep.errors.push(`Receta «${c.name}»: cantidad de receta componente inválida.`)
+      if (!c.demo && recipesById.get(k.recipeId)?.demo) rep.errors.push(`Receta «${c.name}»: no puede depender de una receta de demostración.`)
+    }
+  const visiting = new Set<string>(), visited = new Set<string>()
+  const visit = (id: string): boolean => {
+    if (visiting.has(id)) return true
+    if (visited.has(id)) return false
+    visiting.add(id)
+    const r = recipesById.get(id)
+    const cycle = (r?.recipeComponents ?? []).some((x) => rec.has(x.recipeId) && visit(x.recipeId))
+    visiting.delete(id); visited.add(id)
+    return cycle
+  }
+  for (const r of d.recipes as Recipe[])
+    if (visit(r.id)) { rep.errors.push(`Receta «${r.name}»: hay una referencia circular entre recetas.`); break }
   for (const c of d.recipes as Recipe[])
     for (const u of c.toolUses ?? []) if (!tls.has(u.toolId)) rep.errors.push(`Receta «${c.name}»: herramienta inexistente (${u.toolId}).`)
   for (const p of d.purchases as Purchase[]) if (!ing.has(p.ingredientId)) rep.errors.push(`Compra ${p.id}: ingrediente inexistente.`)

@@ -99,6 +99,44 @@ export async function saveOrder(o: Order, d = db): Promise<Order> {
   })
 }
 
+export class RecipeReferenceError extends Error {}
+
+/** Valida referencias y ciclos dentro de la misma transacción que guarda la receta. */
+export async function saveRecipe(r: Recipe, d = db): Promise<void> {
+  await d.transaction('rw', d.recipes, async () => {
+    const all = await d.recipes.toArray()
+    const recipes = new Map(all.map((x) => [x.id, x]))
+    recipes.set(r.id, r)
+    for (const c of r.recipeComponents ?? []) {
+      if (!Number.isFinite(c.qty) || c.qty <= 0) throw new RecipeReferenceError('Cada receta componente necesita una cantidad mayor que cero.')
+      if (!recipes.has(c.recipeId)) throw new RecipeReferenceError('Una de las recetas componentes ya no existe.')
+    }
+    const visiting = new Set<string>(), visited = new Set<string>()
+    const visit = (id: string): void => {
+      if (visiting.has(id)) throw new RecipeReferenceError('La combinación crea una referencia circular entre recetas.')
+      if (visited.has(id)) return
+      if (!recipes.has(id)) throw new RecipeReferenceError('Una receta componente ya no existe.')
+      if (id !== r.id && !r.demo && recipes.get(id)?.demo) {
+        throw new RecipeReferenceError('Las recetas de demostración no pueden ser componentes de una receta guardada.')
+      }
+      visiting.add(id)
+      for (const c of recipes.get(id)?.recipeComponents ?? []) visit(c.recipeId)
+      visiting.delete(id); visited.add(id)
+    }
+    visit(r.id)
+    await d.recipes.put(r)
+  })
+}
+
+/** Una receta no se puede borrar mientras otra receta compuesta dependa de ella. */
+export async function deleteRecipe(id: string, d = db): Promise<void> {
+  await d.transaction('rw', d.recipes, async () => {
+    const dependents = await d.recipes.filter((r) => (r.recipeComponents ?? []).some((c) => c.recipeId === id)).toArray()
+    if (dependents.length) throw new RecipeReferenceError(`No se puede eliminar: la usan estas recetas compuestas: ${dependents.map((r) => r.name).join(', ')}.`)
+    await d.recipes.delete(id)
+  })
+}
+
 export async function ingredientInUse(id: string, d = db): Promise<string[]> {
   return (await d.recipes.toArray()).filter((r) => r.components.some((c) => c.ingredientId === id)).map((r) => r.name)
 }

@@ -3,7 +3,7 @@ import type { Ingredient, Order, Recipe } from '../domain/types'
 import { convert, UnitError } from '../domain/units'
 import { costPerBaseFromPurchase, recipeCost } from '../domain/costing'
 import { analyzePrice, priceForMargin } from '../domain/pricing'
-import { orderTotals, paymentStatus, transition, lineFromRecipe, OrderError } from '../domain/orders'
+import { orderTotals, orderMarginError, paymentStatus, transition, lineFromRecipe, refreshQuote, OrderError } from '../domain/orders'
 import { parseNum, round } from '../domain/money'
 import { buildBackup, parseBackup } from '../domain/backup'
 import { exportCsvs, toCsv } from '../domain/csv'
@@ -81,6 +81,34 @@ describe('costeo de receta', () => {
   it('reporta ingredientes faltantes', () => {
     expect(recipeCost(recipe(), new Map()).missing).toEqual(['choc'])
   })
+  it('combina tapas y relleno usando cantidades y costos por unidad vendible', () => {
+    const tapas = recipe({ id: 'tapas', name: 'Tapas de macarrón', components: [{ ingredientId: 'choc', qty: 20, unit: 'g' }], yieldQty: 10, laborRateCents: 0 })
+    const relleno = recipe({ id: 'relleno', name: 'Relleno de fresa', components: [{ ingredientId: 'choc', qty: 10, unit: 'g' }], yieldQty: 10, laborRateCents: 0 })
+    const compuesta = recipe({
+      id: 'macarrones', name: 'Macarrones de fresa', components: [], laborRateCents: 0,
+      recipeComponents: [{ recipeId: 'tapas', qty: 2 }, { recipeId: 'relleno', qty: 1 }],
+    })
+    const recipes = new Map([[tapas.id, tapas], [relleno.id, relleno], [compuesta.id, compuesta]])
+    expect(recipeCost(compuesta, i, new Map(), recipes)).toMatchObject({
+      recipeComponentsCents: 90, totalCents: 90, unitCostCents: 90, missingRecipes: [], recipeCycle: false,
+    })
+    expect(priceForMargin(recipeCost(compuesta, i, new Map(), recipes).unitCostCents, 60)).toBe(225)
+  })
+  it('compone una base de tarta y relleno de limón y refleja cambios de la receta fuente', () => {
+    const base = recipe({ id: 'base', name: 'Base de tarta', components: [{ ingredientId: 'choc', qty: 30, unit: 'g' }], laborRateCents: 0 })
+    const relleno = recipe({ id: 'limon', name: 'Relleno de limón', components: [{ ingredientId: 'choc', qty: 20, unit: 'g' }], laborRateCents: 0 })
+    const tarta = recipe({ id: 'tarta', name: 'Tarta de limón', components: [], laborRateCents: 0, recipeComponents: [{ recipeId: 'base', qty: 1 }, { recipeId: 'limon', qty: 1 }] })
+    const recipes = new Map([[base.id, base], [relleno.id, relleno], [tarta.id, tarta]])
+    expect(recipeCost(tarta, i, new Map(), recipes).totalCents).toBe(900)
+    recipes.set('base', { ...base, yieldQty: 2 })
+    expect(recipeCost(tarta, i, new Map(), recipes).totalCents).toBe(630)
+  })
+  it('detecta ciclos y referencias de recetas faltantes sin recursión infinita', () => {
+    const a = recipe({ id: 'a', components: [], recipeComponents: [{ recipeId: 'b', qty: 1 }] })
+    const b = recipe({ id: 'b', components: [], recipeComponents: [{ recipeId: 'a', qty: 1 }] })
+    expect(recipeCost(a, i, new Map(), new Map([[a.id, a], [b.id, b]])).recipeCycle).toBe(true)
+    expect(recipeCost(a, i, new Map()).missingRecipes).toEqual(['b'])
+  })
 })
 
 describe('precios y márgenes', () => {
@@ -136,6 +164,43 @@ describe('pedidos', () => {
     expect(recipeCost(r, ings(ing('choc', 36))).unitCostCents).toBe(7200)
     expect(orderTotals(o).costCents).toBe(3600)
   })
+  it('actualiza precio y costo de una cotización, conserva el precio personalizado y no toca confirmados', () => {
+    const original = recipe({ laborRateCents: 0, priceCents: 2000 })
+    const oldIngredients = ings(ing('choc', 10))
+    const quote = order({ lines: [lineFromRecipe(original, oldIngredients, 1)] })
+    const updated = { ...original, name: 'Pastel actualizado', priceCents: 4000, commissionPct: 5 }
+    const recipes = new Map([[updated.id, updated]])
+    const newIngredients = ings(ing('choc', 20))
+
+    const refreshed = refreshQuote(quote, recipes, newIngredients)
+    expect(refreshed.lines[0]).toMatchObject({ name: 'Pastel actualizado', unitPriceCents: 4000, unitCostCents: 4000, commissionPct: 5 })
+    const custom = refreshQuote({ ...quote, lines: [{ ...quote.lines[0], unitPriceCents: 2500, priceOverrideCents: 2500 }] }, recipes, newIngredients)
+    expect(custom.lines[0].unitPriceCents).toBe(2500)
+    const legacyCustom = refreshQuote({ ...quote, lines: [{ ...quote.lines[0], unitPriceCents: 2500, priceOverride: true }] }, recipes, newIngredients)
+    expect(legacyCustom.lines[0]).toMatchObject({ unitPriceCents: 2500, priceOverrideCents: 2500 })
+    expect(legacyCustom.lines[0].priceOverride).toBeUndefined()
+
+    const confirmed = transition(quote, 'confirmado', new Map([[original.id, original]]), oldIngredients)
+    expect(refreshQuote(confirmed, recipes, newIngredients).lines[0].unitPriceCents).toBe(2000)
+    expect(confirmed.lines[0].unitCostCents).toBe(2000)
+  })
+  it('aplica el margen del pedido sobre todas las líneas con comisión y bloquea márgenes imposibles', () => {
+    const r = recipe({ laborRateCents: 0, priceCents: 12000, commissionPct: 5 })
+    const ingredients = ings(ing('choc', 20))
+    const line = { ...lineFromRecipe(r, ingredients), unitPriceCents: 2500, priceOverrideCents: 2500 }
+    const quote = order({ orderMarginPct: 30, lines: [line] })
+    const recipes = new Map([[r.id, r]])
+    const refreshed = refreshQuote(quote, recipes, ingredients)
+    expect(refreshed.lines[0].unitPriceCents).toBe(6154)
+    expect(orderMarginError(refreshed)).toBeNull()
+
+    const noOrderMargin = refreshQuote({ ...refreshed, orderMarginPct: undefined }, recipes, ingredients)
+    expect(noOrderMargin.lines[0].unitPriceCents).toBe(2500)
+    expect(orderMarginError({ ...quote, orderMarginPct: 95 })).toMatch(/Usa un margen menor/)
+
+    const confirmed = transition(refreshed, 'confirmado', recipes, ingredients)
+    expect(refreshQuote(confirmed, new Map([[r.id, { ...r, priceCents: 20000 }]]), ingredients).lines[0].unitPriceCents).toBe(6154)
+  })
   it('no confirma pedido vacío ni reabre uno cancelado', () => {
     expect(() => transition(order(), 'confirmado', new Map(), new Map())).toThrow(OrderError)
     expect(() => transition(order({ status: 'cancelado' }), 'confirmado', new Map(), new Map())).toThrow(OrderError)
@@ -178,9 +243,11 @@ describe('números y respaldo', () => {
     expect(c).toContain("'=SUM(A1)")
   })
   it('CSV de pedidos conserva ids que vinculan líneas', () => {
-    const o = order({ lines: [{ id: 'l', recipeId: 'r1', name: 'Pastel', qty: 1, unitPriceCents: 100, unitCostCents: 50, commissionPct: 0, customization: '' }] })
+    const o = order({ orderMarginPct: 30, lines: [{ id: 'l', recipeId: 'r1', name: 'Pastel', qty: 1, unitPriceCents: 100, unitCostCents: 50, commissionPct: 0, customization: '' }] })
     const f = exportCsvs({ ...empty, orders: [o] })
     expect(f['pedidos.csv']).toContain('o1')
+    expect(f['pedidos.csv']).toContain('margen_pedido_pct')
+    expect(f['pedidos.csv']).toContain('30')
     expect(f['pedidos_lineas.csv']).toContain('o1,PED-0001,r1')
   })
 })

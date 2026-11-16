@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { Expense, Order, OrderLine, Recipe } from '../domain/types'
+import type { Expense, Ingredient, Order, OrderLine, Recipe } from '../domain/types'
 import { buildSeries, computeMetrics, costDistribution, dataWarnings, defaultGranularity, delta, NO_FILTERS, ordersAndCollections, productRows, receivables, resolveRange, type Ctx } from '../domain/finance'
-import { sharesOf } from '../domain/orders'
+import { lineFromRecipe, sharesOf } from '../domain/orders'
 import { recipeCost } from '../domain/costing'
 import { transition } from '../domain/orders'
 
@@ -138,6 +138,19 @@ describe('series, distribución y productos son consistentes con los totales', (
     expect(d.find((x) => x.key === 'ingredients')!.cents).toBe(4000) // 8000 × 0.5
     expect(d.find((x) => x.key === 'unknown')!.cents).toBe(10000) // pedido sin desglose
     expect(d.reduce((s, x) => s + x.pct, 0)).toBeCloseTo(100)
+  })
+  it('distribuye por separado el costo congelado de recetas componentes', () => {
+    const source = rec({ id: 'source', components: [{ ingredientId: 'choc', qty: 200, unit: 'g' }], laborRateCents: 0 })
+    const composed = rec({ id: 'composed', components: [], laborRateCents: 0, recipeComponents: [{ recipeId: source.id, qty: 2 }] })
+    const recipes = new Map([[source.id, source], [composed.id, composed]])
+    const chocolate: Ingredient = { id: 'choc', name: 'Choc', category: '', costPerBase: 18, dimension: 'masa', priceUpdatedAt: '', createdAt: '' }
+    const line = lineFromRecipe(composed, new Map([[chocolate.id, chocolate]]), 1, new Map(), recipes)
+    const order = ord('composed-order', '2026-05-10T10:00:00', { lines: [{ ...line, unitPriceCents: 10000 }] })
+    const c = ctx({ orders: [order], recipes: [source, composed] })
+    const dist = costDistribution(c, r, NO_FILTERS)
+    expect(dist.find((x) => x.key === 'recipeComponents')?.cents).toBe(7200)
+    expect(dist.reduce((sum, x) => sum + x.cents, 0)).toBe(computeMetrics(c, r, NO_FILTERS).cost)
+    expect(line.costShares?.recipeComponents).toBe(1)
   })
   it('rentabilidad por producto y filtros por categoría/producto', () => {
     const rows = productRows(c, r, NO_FILTERS)

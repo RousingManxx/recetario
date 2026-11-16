@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
-import { db, uid } from '../../db/db'
+import { db, deleteRecipe, RecipeReferenceError, saveRecipe, uid } from '../../db/db'
 import { recipeCost, totalMinutes } from '../../domain/costing'
 import { formatMXN, formatNum, pesosToCents } from '../../domain/money'
 import { analyzePrice, priceForMargin, scenarios } from '../../domain/pricing'
-import type { EnergyMode, Ingredient, LaborMode, Recipe, RecipeKind, Settings, ToolUse, Unit } from '../../domain/types'
+import type { EnergyMode, Ingredient, LaborMode, Recipe, RecipeComponentRef, RecipeKind, Settings, ToolUse, Unit } from '../../domain/types'
 import { UNITS, UnitError, qtyInBase } from '../../domain/units'
 import { Field, NumInput, Sheet, useUi } from '../ui'
 import type { Data } from '../data'
 
-export const RECIPE_CATEGORIES = ['Pasteles', 'Galletas', 'Pan', 'Cupcakes', 'Macarrones', 'Postres', 'Cajas y paquetes', 'Otros']
+export const RECIPE_CATEGORIES = ['Pasteles', 'Galletas', 'Pan', 'Cupcakes', 'Macarrones', 'Tartas', 'Postres', 'Cajas y paquetes', 'Otros']
 /** Categorías predeterminadas + las que ya usan tus recetas (así nunca se pierde una al editar). */
 export const categoriesOf = (recipes: { category: string }[], current?: string) => [...new Set([...RECIPE_CATEGORIES, ...recipes.map((r) => r.category), ...(current ? [current] : [])])].filter(Boolean)
 const KINDS: [RecipeKind, string][] = [['producto', 'Producto individual'], ['pastel', 'Pastel completo'], ['porcion', 'Porción'], ['caja', 'Caja'], ['paquete', 'Paquete'], ['personalizado', 'Personalizado']]
@@ -16,7 +16,7 @@ const ALL_UNITS = Object.keys(UNITS) as Unit[]
 
 export function newRecipe(s: Settings): Recipe {
   return {
-    id: uid(), name: '', category: RECIPE_CATEGORIES[0], kind: 'producto', description: '', favorite: false, components: [],
+    id: uid(), name: '', category: RECIPE_CATEGORIES[0], kind: 'producto', description: '', favorite: false, components: [], recipeComponents: [],
     yieldQty: 1, portionsPerUnit: 1, activeMin: 0, bakeMin: 0, restMin: 0, ingredientWastePct: 0, finishedWastePct: 0,
     laborMode: s.defaultLaborMode, laborRateCents: s.defaultLaborRateCents, laborOps: 1, energyMode: 'fijo', energyValue: 0,
     otherCents: 0, packagingCentsPerUnit: 0, commissionPct: 0, toolWearPct: s.defaultToolWearPct ?? 0, targetMarginPct: s.defaultMarginPct, steps: '', notes: '', updatedAt: new Date().toISOString(),
@@ -28,7 +28,7 @@ function unitsFor(i: Ingredient): Unit[] {
   return ALL_UNITS.filter((u) => UNITS[u].dim === i.dimension || (i.density && UNITS[u].dim !== 'pieza' && i.dimension !== 'pieza'))
 }
 
-export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: Data; onClose: () => void }) {
+export function RecipeForm({ recipe, data, composing = false, onClose }: { recipe?: Recipe; data: Data; composing?: boolean; onClose: () => void }) {
   const ui = useUi()
   const [r, setR] = useState<Recipe>(() => recipe ?? newRecipe(data.settings))
   const [tried, setTried] = useState(false)
@@ -40,15 +40,21 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
   })
 
   const { cost, unitErr } = useMemo(() => {
-    try { return { cost: recipeCost(r, data.ingMap, data.toolMap), unitErr: '' } }
-    catch (e) { return { cost: recipeCost({ ...r, components: [] }, data.ingMap, data.toolMap), unitErr: e instanceof UnitError ? e.message : 'Error en un ingrediente' } }
-  }, [r, data.ingMap, data.toolMap])
+    try { return { cost: recipeCost(r, data.ingMap, data.toolMap, data.recipeMap), unitErr: '' } }
+    catch (e) { return { cost: recipeCost({ ...r, components: [] }, data.ingMap, data.toolMap, data.recipeMap), unitErr: e instanceof UnitError ? e.message : 'Error en un ingrediente' } }
+  }, [r, data.ingMap, data.toolMap, data.recipeMap])
   const commission = r.commissionPct
   const recommended = priceForMargin(cost.unitCostCents, r.targetMarginPct, commission)
   const price = r.priceCents ?? recommended ?? 0
   const an = analyzePrice(price, cost.unitCostCents, commission)
   const nameBad = !r.name.trim()
   const compBad = r.components.some((c) => !c.ingredientId || !(c.qty > 0))
+  const recipeComponents = r.recipeComponents ?? []
+  const showRecipeComponents = composing || recipeComponents.length > 0
+  const allowDemoSources = composing || Boolean(r.demo)
+  const selectedDemo = recipeComponents.some((c) => data.recipeMap.get(c.recipeId)?.demo)
+  const selectedReal = recipeComponents.some((c) => data.recipeMap.has(c.recipeId) && !data.recipeMap.get(c.recipeId)?.demo)
+  const recipeCompBad = recipeComponents.some((c) => !c.recipeId || !(c.qty > 0))
   const uses = r.toolUses ?? []
   const toolBad = uses.some((u) => !u.toolId || !(u.pct >= 0 && u.pct <= 100))
   const setUse = (i: number, patch: Partial<ToolUse>) => set('toolUses', uses.map((u, j) => (j === i ? { ...u, ...patch } : u)))
@@ -58,15 +64,28 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
     if (nameBad) { setStep('datos'); return }
     if (!(r.yieldQty > 0)) { setStep('datos'); return ui.toast('El rendimiento debe ser mayor que cero', true) }
     if (compBad) { setStep('datos'); return ui.toast('Completa o quita los ingredientes vacíos', true) }
+    if (recipeCompBad || recipeComponents.length === 1 || composing && recipeComponents.length < 2) {
+      setStep('datos'); return ui.toast('Selecciona al menos dos recetas componentes y completa sus cantidades', true)
+    }
+    if (composing && selectedDemo && selectedReal) {
+      setStep('datos'); return ui.toast('No se pueden mezclar recetas de demostración con recetas propias', true)
+    }
     if (toolBad) { setStep('costos'); return ui.toast('Cada herramienta necesita un porcentaje de uso entre 0 y 100', true) }
     if (unitErr) return ui.toast(unitErr, true)
-    await db.recipes.put({ ...r, name: r.name.trim(), updatedAt: new Date().toISOString() })
-    ui.toast('Receta guardada'); onClose()
+    if (cost.recipeCycle) return ui.toast('La combinación crea una referencia circular entre recetas', true)
+    if (cost.missingRecipes.length) return ui.toast('Una receta componente ya no existe', true)
+    try {
+      await saveRecipe({ ...r, name: r.name.trim(), demo: composing ? selectedDemo || undefined : r.demo, updatedAt: new Date().toISOString() })
+      ui.toast('Receta guardada'); onClose()
+    } catch (e) { ui.toast(e instanceof RecipeReferenceError ? e.message : (e as Error).message, true) }
   }
   const remove = async () => {
     const used = await db.orders.filter((o) => o.lines.some((l) => l.recipeId === r.id)).count()
     const msg = used ? `Esta receta aparece en ${used} pedido(s). Los pedidos conservan su copia de precios y costos. ¿Eliminar la receta?` : `Se eliminará «${r.name}».`
-    if (await ui.confirm(msg, 'Eliminar')) { await db.recipes.delete(r.id); onClose() }
+    if (await ui.confirm(msg, 'Eliminar')) {
+      try { await deleteRecipe(r.id); onClose() }
+      catch (e) { ui.toast(e instanceof RecipeReferenceError ? e.message : (e as Error).message, true) }
+    }
   }
 
   const addComp = () => {
@@ -76,6 +95,15 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
   }
   const setComp = (i: number, patch: Partial<Recipe['components'][number]>) =>
     set('components', r.components.map((c, j) => (j === i ? { ...c, ...patch } : c)))
+  const addRecipeComp = () => {
+    const available = data.recipes.filter((x) => x.id !== r.id && !recipeComponents.some((c) => c.recipeId === x.id) &&
+      (x.demo ? allowDemoSources && !selectedReal : !selectedDemo))
+    const first = composing ? available.find((x) => !x.demo) ?? available[0] : available.find((x) => !x.demo)
+    if (!first) return ui.toast('No hay más recetas disponibles para combinar', true)
+    set('recipeComponents', [...recipeComponents, { recipeId: first.id, qty: 1 }])
+  }
+  const setRecipeComp = (i: number, patch: Partial<RecipeComponentRef>) =>
+    set('recipeComponents', recipeComponents.map((c, j) => j === i ? { ...c, ...patch } : c))
 
   const lineCost = (c: Recipe['components'][number]) => {
     const ing = data.ingMap.get(c.ingredientId)
@@ -84,7 +112,7 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
   }
 
   return (
-    <Sheet title={recipe ? 'Editar receta' : 'Nueva receta'} onClose={onClose}
+    <Sheet title={composing ? 'Combinar recetas' : recipe ? 'Editar receta' : 'Nueva receta'} onClose={onClose}
       footer={<>
         {recipe && <button className="btn danger" onClick={remove}>Eliminar</button>}
         <button className="btn" onClick={onClose}>Cancelar</button>
@@ -132,6 +160,39 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
               )
             })}
             <button className="btn" onClick={addComp}>+ Agregar ingrediente</button>
+
+            {showRecipeComponents && <>
+              <h3>Recetas componentes</h3>
+              {composing && <p className="small muted">Elige al menos dos recetas guardadas del mismo grupo (de demostración o propias) y cuántas unidades vendibles usarás en esta tanda. Las recetas de demostración no se incluyen en respaldos.</p>}
+              {recipeComponents.map((c, i) => {
+                const component = data.recipeMap.get(c.recipeId)
+                const componentCost = component ? recipeCost(component, data.ingMap, data.toolMap, data.recipeMap) : null
+                return (
+                  <div key={i} className="card stack" style={{ padding: 12 }}>
+                    <select aria-label="Receta componente" value={c.recipeId} aria-invalid={tried && !c.recipeId}
+                      onChange={(e) => setRecipeComp(i, { recipeId: e.target.value })}>
+                      <option value="">Elige una receta…</option>
+                      {data.recipes.filter((x) => {
+                        const others = recipeComponents.filter((_, j) => j !== i)
+                        const otherDemo = others.some((other) => data.recipeMap.get(other.recipeId)?.demo)
+                        const otherReal = others.some((other) => data.recipeMap.has(other.recipeId) && !data.recipeMap.get(other.recipeId)?.demo)
+                        return x.id !== r.id && (x.id === c.recipeId || !others.some((other) => other.recipeId === x.id) &&
+                          (x.demo ? allowDemoSources && !otherReal : !otherDemo))
+                      })
+                        .map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                    </select>
+                    <div className="row">
+                      <NumInput value={c.qty || undefined} onChange={(v) => setRecipeComp(i, { qty: v ?? 0 })} placeholder="Unidades" aria-label="Unidades de receta" invalid={tried && !(c.qty > 0)} />
+                      <span className="num nowrap small" style={{ minWidth: 120, textAlign: 'right' }}>
+                        {componentCost ? `${formatMXN(componentCost.unitCostCents)} c/u · ${formatMXN(Math.round(componentCost.unitCostCents * c.qty))}` : ''}
+                      </span>
+                      <button className="btn small ghost danger" aria-label="Quitar receta componente" onClick={() => set('recipeComponents', recipeComponents.filter((_, j) => j !== i))}>✕</button>
+                    </div>
+                  </div>
+                )
+              })}
+              <button className="btn" onClick={addRecipeComp}>+ Agregar receta componente</button>
+            </>}
 
             <h3>Rendimiento</h3>
             <div className="grid2">
@@ -253,10 +314,14 @@ export function RecipeForm({ recipe, data, onClose }: { recipe?: Recipe; data: D
         <div className="card stack" style={{ position: 'sticky', bottom: -8, background: 'var(--surface-2)' }}>
           {unitErr && <div className="banner bad">{unitErr}</div>}
           {cost.missing.length > 0 && <div className="banner bad">Hay ingredientes que ya no existen.</div>}
+          {cost.missingRecipes.length > 0 && <div className="banner bad">Hay recetas componentes que ya no existen.</div>}
+          {cost.recipeCycle && <div className="banner bad">Hay una referencia circular entre recetas.</div>}
           <div className="row between small"><span>Ingredientes{cost.wasteCents ? ' + merma' : ''}</span><span className="num">{formatMXN(cost.ingredientsCents + cost.wasteCents)}</span></div>
+          {recipeComponents.length > 0 && <div className="row between small"><span>Recetas componentes</span><span className="num">{formatMXN(cost.recipeComponentsCents)}</span></div>}
           <div className="row between small"><span>Mano de obra · energía · herramientas · otros · empaque</span><span className="num">{formatMXN(cost.laborCents + cost.energyCents + cost.toolsCents + cost.otherCents + cost.packagingCents)}</span></div>
           <div className="row between"><b>Costo total de la tanda</b><b className="num">{formatMXN(cost.totalCents)}</b></div>
           <div className="row between"><b>Costo por unidad</b><b className="num">{formatMXN(cost.unitCostCents)}</b></div>
+          <div className="row between"><b>Precio de venta</b><b className="num">{formatMXN(price)}</b></div>
           {r.portionsPerUnit > 1 && <div className="row between small"><span>Costo por porción</span><span className="num">{formatMXN(cost.portionCostCents)}</span></div>}
         </div>
       </div>

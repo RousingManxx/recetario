@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { AppDB, deleteDemoData, snapshot, useDb } from '../db/db'
+import { AppDB, deleteDemoData, saveRecipe, snapshot, useDb } from '../db/db'
 import { loadDemo } from '../db/demo'
+import { buildBackup } from '../domain/backup'
 import { recipeCost } from '../domain/costing'
 import { orderTotals } from '../domain/orders'
 import { analyzePrice } from '../domain/pricing'
@@ -42,6 +43,23 @@ describe('datos de demostración: macarrones con recetas separadas', () => {
     expect(t.paidCents).toBe(15000); expect(t.balanceCents).toBe(t.totalCents - 15000)
     expect(t.profitCents).toBeGreaterThan(0); expect(t.marginPct!).toBeGreaterThan(40)
     expect(o.lines[0].costShares?.tools).toBeGreaterThan(0)
+  })
+  it('permite combinar dos recetas demo y borra la compuesta junto con los ejemplos', async () => {
+    await loadDemo()
+    const sources = await d.recipes.toArray()
+    const tapas = sources.find((r) => r.name.startsWith('Tapas de macarrón'))!
+    const fresa = sources.find((r) => r.name.startsWith('Relleno de fresa'))!
+    const composed = {
+      ...tapas, id: 'macarrones-fresa-demo', name: 'Macarrones de fresa (demo)', yieldQty: 30,
+      recipeComponents: [{ recipeId: tapas.id, qty: 2 }, { recipeId: fresa.id, qty: 1 }],
+    }
+    await saveRecipe(composed)
+    const data = await snapshot(d)
+    const cost = recipeCost(composed, new Map(data.ingredients.map((i) => [i.id, i])), new Map(data.tools.map((t) => [t.id, t])), new Map(data.recipes.map((r) => [r.id, r])))
+    expect(cost.recipeComponentsCents).toBeGreaterThan(0)
+    expect(buildBackup(data).recipes).toHaveLength(0)
+    await deleteDemoData(d)
+    expect(await d.recipes.count()).toBe(0)
   })
   it('borrar demo elimina todo lo de macarrones y no deja huérfanos', async () => {
     await loadDemo(); await deleteDemoData()
