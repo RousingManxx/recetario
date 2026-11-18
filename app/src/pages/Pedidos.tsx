@@ -43,6 +43,11 @@ export function Pedidos({ data }: { data: Data }) {
     return () => { active = false }
   }, [quotesToRefresh, ui])
   const [view, setView] = useState<'lista' | 'agenda' | 'clientes'>('lista')
+  const [agendaView, setAgendaView] = useState<'lista' | 'calendario'>('lista')
+  const [agendaMonth, setAgendaMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
   const [q, setQ] = useState('')
   const [st, setSt] = useState<'' | OrderStatus>('')
   const [pay, setPay] = useState<'' | PaymentStatus>('')
@@ -62,7 +67,18 @@ export function Pedidos({ data }: { data: Data }) {
 
   const agenda = currentOrders.filter((o) => ['confirmado', 'preparacion', 'listo'].includes(o.status)).sort((a, b) => a.deliveryAt.localeCompare(b.deliveryAt))
   const byDay = new Map<string, Order[]>()
-  for (const o of agenda) { const k = new Date(o.deliveryAt).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }); byDay.set(k, [...(byDay.get(k) ?? []), o]) }
+  for (const o of agenda) { const k = o.deliveryAt.slice(0, 10); byDay.set(k, [...(byDay.get(k) ?? []), o]) }
+  const monthStart = new Date(agendaMonth.getFullYear(), agendaMonth.getMonth(), 1)
+  const monthDays = new Date(agendaMonth.getFullYear(), agendaMonth.getMonth() + 1, 0).getDate()
+  const firstDayOffset = (monthStart.getDay() + 6) % 7
+  const calendarDays = Array.from({ length: Math.ceil((firstDayOffset + monthDays) / 7) * 7 }, (_, i) => {
+    const day = i - firstDayOffset + 1
+    return day > 0 && day <= monthDays ? `${agendaMonth.getFullYear()}-${String(agendaMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : ''
+  })
+  const [today] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  })
 
   return (
     <div className="stack">
@@ -90,10 +106,34 @@ export function Pedidos({ data }: { data: Data }) {
         </>
       )}
 
-      {view === 'agenda' && (agenda.length === 0 ? <Empty title="Sin entregas pendientes" text="Los pedidos confirmados aparecerán aquí por fecha de entrega." /> :
-        [...byDay].map(([day, os]) => (
-          <section key={day} className="stack"><h3 style={{ textTransform: 'capitalize' }}>{day}</h3>{os.map((o) => <OrderRow key={o.id} o={o} onClick={() => open({ k: 'order', v: o })} />)}</section>
-        )))}
+      {view === 'agenda' && (
+        <div className="stack">
+          <Seg value={agendaView} onChange={setAgendaView} options={[['lista', 'Lista'], ['calendario', 'Calendario']]} />
+          {agendaView === 'lista' ? (agenda.length === 0 ? <Empty title="Sin entregas pendientes" text="Los pedidos confirmados aparecerán aquí por fecha de entrega." /> :
+            [...byDay].sort(([a], [b]) => a.localeCompare(b)).map(([day, os]) => (
+              <section key={day} className="stack"><h3 style={{ textTransform: 'capitalize' }}>{new Date(`${day}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h3>{os.map((o) => <OrderRow key={o.id} o={o} onClick={() => open({ k: 'order', v: o })} />)}</section>
+            ))) : (
+            <section className="calendar card" aria-label="Calendario de entregas">
+              <div className="row between calendar-head">
+                <button className="btn small" aria-label="Mes anterior" onClick={() => setAgendaMonth(new Date(agendaMonth.getFullYear(), agendaMonth.getMonth() - 1, 1))}>‹</button>
+                <h2 style={{ textTransform: 'capitalize' }}>{agendaMonth.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}</h2>
+                <button className="btn small" aria-label="Mes siguiente" onClick={() => setAgendaMonth(new Date(agendaMonth.getFullYear(), agendaMonth.getMonth() + 1, 1))}>›</button>
+              </div>
+              <div className="calendar-grid" role="grid">
+                {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => <div key={day} className="calendar-weekday" role="columnheader">{day}</div>)}
+                {calendarDays.map((day, i) => (
+                  <div key={day || `empty-${i}`} className={`calendar-day${day === today ? ' today' : ''}`} role="gridcell" aria-label={day ? new Date(`${day}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) : undefined}>
+                    {day && <><span className="calendar-date">{Number(day.slice(-2))}</span>{(byDay.get(day) ?? []).map((o) => (
+                      <button key={o.id} className="calendar-order" title={`${o.customerName} · ${fmtDateTime(o.deliveryAt)}`} onClick={() => open({ k: 'order', v: o })}>{o.customerName}</button>
+                    ))}</>}
+                  </div>
+                ))}
+              </div>
+              {agenda.length === 0 && <p className="small muted">No hay entregas pendientes este mes.</p>}
+            </section>
+          )}
+        </div>
+      )}
 
       {view === 'clientes' && (data.customers.length === 0 ? <Empty title="Aún no tienes clientes" text="Guárdalos para no escribir sus datos cada vez." action={<button className="btn primary" onClick={() => open({ k: 'customer' })}>Agregar cliente</button>} /> :
         [...data.customers].sort((a, b) => a.name.localeCompare(b.name, 'es')).map((c) => {

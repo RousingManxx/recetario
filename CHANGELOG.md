@@ -4,14 +4,19 @@ Todos los cambios relevantes de Recetario se anotan aquí. Formato basado en [Ke
 
 > Las versiones 1.0.0 a 1.2.1 se asignaron **retroactivamente**, agrupando los commits del historial de Git (20–22 de octubre de 2026). `app/package.json` indica la versión vigente; la pantalla de Ajustes muestra además el commit y la fecha de compilación.
 
-**Cómo publicar una versión:** mueve lo de «Sin publicar» a una sección nueva con su número y fecha, sube `version` en `app/package.json` y haz el merge a `main` (el workflow publica en GitHub Pages).
+**Cómo publicar una versión:** registra los cambios en el changelog con su número y fecha, actualiza `version` en `app/package.json` y publica en `main` (el workflow despliega automáticamente en GitHub Pages).
 
-## [Sin publicar]
+## [1.4.0] — 2026-11-18
 
 ### Agregado
 - Categoría **Tartas**, resumen del precio de venta en la receta y eliminación definitiva de pedidos con confirmación.
 - Recetas compuestas con cantidades de recetas componentes, costo recursivo por rendimiento, trazabilidad en respaldos/CSV y protección contra ciclos y borrado de componentes en uso.
 - Margen de ganancia propio por pedido: recalcula todas las líneas con los costos vigentes y la comisión de cada receta.
+- Vista mensual de calendario para la agenda de entregas, con acceso directo a cada pedido.
+- Foto optimizada por receta y fichas de receta listas para imprimir o guardar como PDF, de forma individual, seleccionada o todas.
+
+### Cambiado
+- Diseño de impresión de recetas con foto, rendimiento, tiempos, ingredientes y pasos de preparación.
 
 ### Corregido
 - Las cotizaciones abiertas se actualizan con el precio, costo y comisión vigentes de sus recetas. Los precios ajustados manualmente en una línea se conservan; los pedidos confirmados siguen congelados.

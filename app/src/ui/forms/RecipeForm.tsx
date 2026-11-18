@@ -9,6 +9,29 @@ import { Field, NumInput, Sheet, useUi } from '../ui'
 import type { Data } from '../data'
 
 export const RECIPE_CATEGORIES = ['Pasteles', 'Galletas', 'Pan', 'Cupcakes', 'Macarrones', 'Tartas', 'Postres', 'Cajas y paquetes', 'Otros']
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+const MAX_IMAGE_SIZE = 1200
+
+async function resizeRecipeImage(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Elige un archivo de imagen.')
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('La imagen debe pesar menos de 10 MB.')
+  const url = URL.createObjectURL(file)
+  try {
+    const image = new Image()
+    image.src = url
+    await image.decode()
+    const scale = Math.min(1, MAX_IMAGE_SIZE / Math.max(image.naturalWidth, image.naturalHeight))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('No se pudo procesar la imagen.')
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', 0.82)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
 /** Categorías predeterminadas + las que ya usan tus recetas (así nunca se pierde una al editar). */
 export const categoriesOf = (recipes: { category: string }[], current?: string) => [...new Set([...RECIPE_CATEGORIES, ...recipes.map((r) => r.category), ...(current ? [current] : [])])].filter(Boolean)
 const KINDS: [RecipeKind, string][] = [['producto', 'Producto individual'], ['pastel', 'Pastel completo'], ['porcion', 'Porción'], ['caja', 'Caja'], ['paquete', 'Paquete'], ['personalizado', 'Personalizado']]
@@ -135,6 +158,20 @@ export function RecipeForm({ recipe, data, composing = false, onClose }: { recip
               <Field label="Tipo"><select value={r.kind} onChange={(e) => set('kind', e.target.value as RecipeKind)}>{KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
             </div>
             <Field label="Descripción"><textarea value={r.description} onChange={(e) => set('description', e.target.value)} style={{ minHeight: 56 }} /></Field>
+            <Field label="Foto de la receta" hint="La imagen se optimiza y se guarda en este dispositivo.">
+              <input type="file" accept="image/*" aria-label="Foto de la receta" onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (!file) return
+                void resizeRecipeImage(file).then((imageDataUrl) => set('imageDataUrl', imageDataUrl)).catch((error: unknown) => {
+                  ui.toast(error instanceof Error ? error.message : 'No se pudo cargar la imagen.', true)
+                })
+              }} />
+            </Field>
+            {r.imageDataUrl && <div className="recipe-photo-edit">
+              <img src={r.imageDataUrl} alt={`Foto de ${r.name || 'la receta'}`} />
+              <button className="btn small danger" onClick={() => set('imageDataUrl', undefined)}>Quitar foto</button>
+            </div>}
 
             <h3>Ingredientes</h3>
             {r.components.length === 0 && <p className="muted small">Agrega los ingredientes y la cantidad que usa una tanda completa.</p>}

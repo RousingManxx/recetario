@@ -40,6 +40,12 @@ describe('persistencia', () => {
     await expect(saveRecipe({ ...base, recipeComponents: [{ recipeId: 'compuesta', qty: 1 }] }, d)).rejects.toThrow(/circular/)
     expect(await d.recipes.count()).toBe(3)
   })
+  it('conserva la foto de una receta al guardar y respaldar', async () => {
+    const recipe = { ...rec('foto'), imageDataUrl: 'data:image/jpeg;base64,dGVzdA==' }
+    await saveRecipe(recipe, d)
+    expect((await d.recipes.get(recipe.id))?.imageDataUrl).toBe(recipe.imageDataUrl)
+    expect((await createBackup(d)).recipes[0].imageDataUrl).toBe(recipe.imageDataUrl)
+  })
   it('no usa recetas de demostración como componentes guardados', async () => {
     await d.recipes.add({ ...rec('demo'), demo: true })
     await expect(saveRecipe(rec('real', [{ recipeId: 'demo', qty: 1 }]), d)).rejects.toThrow(/demostración/)

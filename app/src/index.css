@@ -97,6 +97,21 @@ a { color: var(--accent-strong); }
 .grid2 { display: grid; gap: var(--s3); grid-template-columns: 1fr 1fr; }
 .item { display: flex; align-items: center; gap: var(--s3); padding: 14px var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); cursor: pointer; width: 100%; text-align: left; }
 .item:hover { border-color: var(--accent); }
+.recipe-row { cursor: default; }
+.recipe-open { display: flex; flex: 1; align-items: center; gap: var(--s3); min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.recipe-row > input[type="checkbox"] { width: 20px; min-height: 20px; flex: none; accent-color: var(--accent-strong); }
+.recipe-thumb { width: 58px; height: 58px; border-radius: var(--r-sm); object-fit: cover; flex: none; }
+.recipe-photo-edit img { display: block; width: min(100%, 360px); max-height: 300px; object-fit: contain; border-radius: var(--r-md); margin-bottom: 8px; }
+.calendar { padding: 12px; }
+.calendar-head { margin-bottom: 10px; }
+.calendar-head h2 { margin: 0; font-size: 1.15rem; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.calendar-weekday { padding: 8px 3px; text-align: center; font-size: 0.75rem; color: var(--text-2); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.calendar-day { min-width: 0; min-height: 96px; padding: 4px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden; }
+.calendar-day.today { background: var(--accent-soft); }
+.calendar-date { display: block; margin-bottom: 3px; font-size: 0.8rem; font-weight: 600; }
+.calendar-order { display: block; width: 100%; overflow: hidden; padding: 3px 4px; margin: 2px 0; border: 0; border-radius: 4px; background: var(--surface-2); color: var(--text); text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 0.68rem; cursor: pointer; }
+.calendar-order:hover { background: var(--accent-soft); }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: var(--s4); gap: var(--s3); }
 .stat { padding: var(--s4); border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); }
 .stat .v { font-family: var(--serif); font-size: 1.45rem; font-weight: 600; line-height: 1.15; margin-top: 2px; }
@@ -205,6 +220,12 @@ button.hb { cursor: pointer; } button.hb:hover { background: var(--accent-soft);
 .table { width: 100%; border-collapse: collapse; font-size: 0.85rem; } .table th { text-align: left; color: var(--text-2); font-weight: 500; padding: 6px 4px; } .table td { padding: 6px 4px; border-top: 1px solid var(--line); }
 .tab .short { display: none; }
 @media (max-width: 399px) { .tab .full { display: none; } .tab .short { display: inline; } .tabbar { width: calc(100% - 16px); padding: 5px 3px; } }
+@media (max-width: 600px) {
+  .calendar { padding: 8px; }
+  .calendar-day { min-height: 74px; padding: 3px 2px; }
+  .calendar-order { font-size: 0.6rem; padding: 2px; }
+  .recipe-actions { flex-wrap: wrap; }
+}
 
 /* iOS hace zoom al enfocar campos con texto < 16 px: se fuerza el mínimo. */
 input, select, textarea { font-size: 16px !important; }

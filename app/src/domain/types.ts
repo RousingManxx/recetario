@@ -65,6 +65,7 @@ export interface Recipe extends Flagged {
   category: string
   kind: RecipeKind
   description: string
+  imageDataUrl?: string
   favorite: boolean
   components: RecipeComponent[]
   /** Cantidad de unidades vendibles de otras recetas que usa una tanda. */

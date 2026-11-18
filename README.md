@@ -1,7 +1,8 @@
 # Recetario — gestión de pastelería (Web + iPhone)
 
-PWA *local-first* en español (MXN). Recetas, ingredientes, costos reales, precios/márgenes, pedidos, clientes,
-gastos, resumen, guía de inicio, exportación CSV y respaldo/restauración JSON. Código en `app/`.
+PWA *local-first* en español (MXN). Recetas con fotos e impresión de fichas en PDF, agenda de pedidos en lista o
+calendario, ingredientes, costos reales, precios/márgenes, clientes, gastos, resumen, guía de inicio, exportación
+CSV y respaldo/restauración JSON. Código en `app/`.
 
 ## Ejecutar
 
@@ -9,12 +10,17 @@ gastos, resumen, guía de inicio, exportación CSV y respaldo/restauración JSON
 cd app
 npm install
 npm run dev          # desarrollo: http://localhost:5173
-npm test             # 37 pruebas unitarias/persistencia (Vitest)
+npm test             # pruebas unitarias/persistencia (Vitest)
 npm run build        # producción en app/dist
 npx vite preview --port 4173 ; npm run e2e   # E2E con Edge (Playwright) sobre el build
 ```
 
 Historial de versiones: `CHANGELOG.md`. Respaldo en Google Drive (opcional): `app/docs/DRIVE.md`.
+
+### Agenda y fichas de recetas
+- En **Pedidos → Agenda** puedes consultar las entregas pendientes como lista o en un calendario mensual; toca un pedido del calendario para abrirlo.
+- Cada receta admite una foto, que se carga al crearla o editarla. La imagen se optimiza en el dispositivo; las fotos de recetas propias se incluyen en el respaldo JSON (los datos demo se excluyen).
+- Desde **Recetas** puedes imprimir una ficha individual, las recetas seleccionadas o todas. En el diálogo de impresión elige **Guardar como PDF** para crear un recetario con foto, rendimiento, ingredientes y preparación.
 
 ## Instalar en tu iPhone (desde Windows, sin Mac)
 
@@ -63,7 +69,7 @@ No se ha iniciado.
 - Gastos fijos **no** se reparten en el costo de recetas (evita doble conteo); se restan en la ganancia neta del periodo.
 
 ### Respaldo
-JSON `recetasapp-backup`, `schemaVersion: 1`, con tablas e ids estables. Importar valida estructura, versión
+JSON `recetasapp-backup`, `schemaVersion: 3`, con tablas e ids estables. Importar valida estructura, versión
 (las más nuevas se rechazan; hay tabla de migraciones para las anteriores), ids duplicados y referencias; muestra resumen;
 permite **combinar** (conserva lo local) o **reemplazar** (con confirmación); se ejecuta en **una transacción** (si falla, nada cambia).
 Los datos demo (marcados `demo`) no entran a copias ni CSV. CSV: UTF-8 con BOM, coma o punto y coma, ids para relacionar archivos,
@@ -93,7 +99,7 @@ Los ids ya son UUID estables para facilitar esa transición.
 Los datos de demostración incluyen un caso de macarrones armados con recetas independientes: «Tapas de macarrón» (rinde 60 tapas, 10 % de merma),
 un relleno por sabor (ganache, fresa, pistache; cada unidad = 1 relleno) y «Caja para 6 macarrones», con ingredientes y herramientas demo. El pedido de
 ejemplo (Sofía Ramírez) arma 18 macarrones como líneas distintas: 36 tapas + 12 + 6 rellenos + 3 cajas. Las categorías de receta ahora incluyen
-«Macarrones» y siempre se completan con las que ya usen tus recetas. Limitación conocida: no hay recetas dentro de recetas (sub-recetas); ver «Pendiente».
+«Macarrones» y siempre se completan con las que ya usen tus recetas. Las recetas compuestas pueden incluir otras recetas como componentes.
 
 ## Finanzas
 Pestaña **Finanzas** (`app/src/pages/Finanzas.tsx`, cálculos en `app/src/domain/finance.ts`, gráficas SVG propias en `app/src/ui/charts.tsx`).
@@ -125,7 +131,7 @@ no usa «Imprimir», que no es fiable en PWAs de iOS. Con filtro de producto/cat
 ## Verificación realizada
 | Qué | Resultado |
 |---|---|
-| Pruebas unitarias y de persistencia (`npm test`) | 98 pasan (incluye herramientas, migración v1→v2 y respaldo; probadas en 3 zonas horarias) |
+| Pruebas unitarias y de persistencia (`npm test`) | 131 pasan |
 | Build de producción + service worker | OK |
 | E2E en Edge (móvil 390 px y escritorio 1280 px) | 21 verificaciones: onboarding → ingredientes → receta ($102.00, precio $255.00) → pedido, anticipo y saldo → costo histórico congelado → resumen → JSON/CSV → borrar todo → restaurar → archivo inválido → persistencia tras recargar; sin errores de consola |
 | E2E de Finanzas (`node e2e/finanzas.mjs`) | Cifras = Resumen, anticipo sin doble conteo, tooltips/teclado, filtros, periodos, detalle, estado vacío, 6 pestañas a 360 y 390 px, claro/oscuro |
@@ -138,7 +144,7 @@ no usa «Imprimir», que no es fiable en PWAs de iOS. Con filtro de producto/cat
 ## Pendiente / limitaciones conocidas
 - Finanzas: sin presupuestos/metas ni impuestos; las compras de ingredientes no se enlazan al estado de pago al proveedor.
 - Sincronización entre dispositivos; app nativa (xtool); Liquid Glass nativo de iOS.
-- Sub-recetas / «recetas armadas» (receta dentro de receta, p. ej. macarrón = 2 tapas + 1 relleno), fotografía de recetas, inventario con descuento automático por pedido
+- Inventario con descuento automático por pedido
   (hay campos de existencia/mínimo/caducidad pero **sin** descuento ni alertas de stock), reportes de rentabilidad por periodo.
 - Impuestos no modelados (se decidió no asumir tasas); el precio es el que cobras.
 - Sin pruebas automáticas de componentes ni de accesibilidad; el E2E cubre el flujo principal, no cada filtro.
