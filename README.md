@@ -20,7 +20,7 @@ Historial de versiones: `CHANGELOG.md`. Respaldo en Google Drive (opcional): `ap
 ### Agenda y fichas de recetas
 - En **Pedidos → Agenda** puedes consultar las entregas pendientes como lista o en un calendario mensual; toca un pedido del calendario para abrirlo.
 - Cada receta admite una foto, que se carga al crearla o editarla. La imagen se optimiza en el dispositivo; las fotos de recetas propias se incluyen en el respaldo JSON (los datos demo se excluyen).
-- Desde **Recetas** puedes imprimir una ficha individual, las recetas seleccionadas o todas. En el diálogo de impresión elige **Guardar como PDF** para crear un recetario con foto, rendimiento, ingredientes y preparación.
+- Desde **Recetas** puedes descargar directamente un PDF con una ficha individual, las recetas seleccionadas o todas. Se genera en el dispositivo e incluye foto, rendimiento, ingredientes y preparación; no abre el diálogo de impresión.
 
 ## Instalar en tu iPhone (desde Windows, sin Mac)
 

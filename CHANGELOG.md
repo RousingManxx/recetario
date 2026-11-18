@@ -6,6 +6,11 @@ Todos los cambios relevantes de Recetario se anotan aquí. Formato basado en [Ke
 
 **Cómo publicar una versión:** registra los cambios en el changelog con su número y fecha, actualiza `version` en `app/package.json` y publica en `main` (el workflow despliega automáticamente en GitHub Pages).
 
+## [1.4.1] — 2026-11-18
+
+### Cambiado
+- Las fichas de recetas ahora se generan y descargan directamente como PDF en el dispositivo, igual que los reportes de Finanzas; ya no dependen del diálogo de impresión del navegador.
+
 ## [1.4.0] — 2026-11-18
 
 ### Agregado
