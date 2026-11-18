@@ -20,6 +20,7 @@ const P: Record<string, string> = {
   up: 'M12 16V4M7 9l5-5 5 5M5 20h14',
   cal: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
   print: 'M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6zM18 12h.01',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
   chart: 'M4 20V4M4 20h16M8 16l4-5 3 3 5-7',
   tool: 'M14.7 6.3a4 4 0 00-5 5L4 17l3 3 5.7-5.7a4 4 0 005-5l-2.4 2.4-2.3-.7-.7-2.3z',
 }

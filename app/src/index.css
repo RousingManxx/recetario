@@ -98,10 +98,18 @@ a { color: var(--accent-strong); }
 .item { display: flex; align-items: center; gap: var(--s3); padding: 14px var(--s4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); cursor: pointer; width: 100%; text-align: left; }
 .item:hover { border-color: var(--accent); }
 .recipe-row { cursor: default; }
+.recipe-row:has(.recipe-actions-menu) { position: relative; z-index: 30; }
 .recipe-open { display: flex; flex: 1; align-items: center; gap: var(--s3); min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
-.recipe-row > input[type="checkbox"] { width: 20px; min-height: 20px; flex: none; accent-color: var(--accent-strong); }
+.recipe-select { display: grid; width: 44px; height: 44px; flex: none; place-items: center; cursor: pointer; border-radius: var(--r-sm); }
+.recipe-select:focus-within { outline: 2px solid var(--accent-strong); outline-offset: -2px; }
+.recipe-select input[type="checkbox"] { width: 20px; height: 20px; min-height: 20px; margin: 0; padding: 0; border-radius: 3px; appearance: auto; accent-color: var(--accent-strong); cursor: pointer; }
 .recipe-thumb { width: 58px; height: 58px; border-radius: var(--r-sm); object-fit: cover; flex: none; }
 .recipe-photo-edit img { display: block; width: min(100%, 360px); max-height: 300px; object-fit: contain; border-radius: var(--r-md); margin-bottom: 8px; }
+.recipe-actions { position: relative; flex: none; align-self: flex-start; }
+.recipe-more { width: 40px; min-width: 40px; padding: 4px; }
+.recipe-actions-menu { position: absolute; z-index: 40; top: calc(100% + 4px); right: 0; width: max-content; min-width: 210px; max-width: min(260px, calc(100vw - 32px)); padding: 6px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+.recipe-actions-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text); text-align: left; cursor: pointer; font: inherit; font-size: .9rem; }
+.recipe-actions-menu button:hover, .recipe-actions-menu button:focus-visible { background: var(--accent-soft); outline: none; }
 .calendar { padding: 12px; }
 .calendar-head { margin-bottom: 10px; }
 .calendar-head h2 { margin: 0; font-size: 1.15rem; }

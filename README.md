@@ -21,6 +21,7 @@ Historial de versiones: `CHANGELOG.md`. Respaldo en Google Drive (opcional): `ap
 - En **Pedidos → Agenda** puedes consultar las entregas pendientes como lista o en un calendario mensual; toca un pedido del calendario para abrirlo.
 - Cada receta admite una foto, que se carga al crearla o editarla. La imagen se optimiza en el dispositivo; las fotos de recetas propias se incluyen en el respaldo JSON (los datos demo se excluyen).
 - Desde **Recetas** puedes descargar directamente un PDF con una ficha individual, las recetas seleccionadas o todas. Se genera en el dispositivo e incluye foto, rendimiento, ingredientes y preparación; no abre el diálogo de impresión.
+- En móvil, las acciones de cada receta están agrupadas en un menú flotante de tres puntos. El selector tiene un área táctil de 44 × 44 px.
 
 ## Instalar en tu iPhone (desde Windows, sin Mac)
 
@@ -131,7 +132,7 @@ no usa «Imprimir», que no es fiable en PWAs de iOS. Con filtro de producto/cat
 ## Verificación realizada
 | Qué | Resultado |
 |---|---|
-| Pruebas unitarias y de persistencia (`npm test`) | 131 pasan |
+| Pruebas unitarias y de persistencia (`npm test`) | 134 pasan |
 | Build de producción + service worker | OK |
 | E2E en Edge (móvil 390 px y escritorio 1280 px) | 21 verificaciones: onboarding → ingredientes → receta ($102.00, precio $255.00) → pedido, anticipo y saldo → costo histórico congelado → resumen → JSON/CSV → borrar todo → restaurar → archivo inválido → persistencia tras recargar; sin errores de consola |
 | E2E de Finanzas (`node e2e/finanzas.mjs`) | Cifras = Resumen, anticipo sin doble conteo, tooltips/teclado, filtros, periodos, detalle, estado vacío, 6 pestañas a 360 y 390 px, claro/oscuro |

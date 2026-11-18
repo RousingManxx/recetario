@@ -6,6 +6,14 @@ Todos los cambios relevantes de Recetario se anotan aquí. Formato basado en [Ke
 
 **Cómo publicar una versión:** registra los cambios en el changelog con su número y fecha, actualiza `version` en `app/package.json` y publica en `main` (el workflow despliega automáticamente en GitHub Pages).
 
+## [1.4.2] — 2026-11-18
+
+### Cambiado
+- En móvil, las acciones de cada receta se agrupan en un menú flotante de tres puntos.
+
+### Corregido
+- El selector de recetas ofrece un área táctil de 44 × 44 px y foco visible para facilitar la selección.
+
 ## [1.4.1] — 2026-11-18
 
 ### Cambiado

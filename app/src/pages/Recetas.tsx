@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { db } from '../db/db'
 import { recipeCost } from '../domain/costing'
 import { formatMXN, formatNum } from '../domain/money'
@@ -8,6 +8,55 @@ import { useOpen } from '../ui/create'
 import { download, type Data } from '../ui/data'
 import { categoriesOf, duplicateRecipe } from '../ui/forms/RecipeForm'
 import { Badge, Empty, Icon, useUi } from '../ui/ui'
+
+function RecipeActions({ recipe, onDownloadPdf, onToggleFavorite, onDuplicate, onOrder }: {
+  recipe: Data['recipes'][number]
+  onDownloadPdf: () => void
+  onToggleFavorite: () => void
+  onDuplicate: () => void
+  onOrder: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const container = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const firstAction = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    firstAction.current?.focus()
+    const pointerDown = (event: PointerEvent) => {
+      if (!container.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setOpen(false); trigger.current?.focus() }
+    }
+    document.addEventListener('pointerdown', pointerDown)
+    document.addEventListener('keydown', keyDown)
+    return () => {
+      document.removeEventListener('pointerdown', pointerDown)
+      document.removeEventListener('keydown', keyDown)
+    }
+  }, [open])
+
+  const run = (action: () => void) => () => { setOpen(false); action() }
+
+  return (
+    <div className="recipe-actions" ref={container}>
+      <button ref={trigger} type="button" className="btn small ghost recipe-more" aria-label={`Más acciones de ${recipe.name}`}
+        aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <Icon n="more" size={22} />
+      </button>
+      {open && <div className="recipe-actions-menu" role="menu" aria-label={`Acciones de ${recipe.name}`}>
+        <button ref={firstAction} type="button" role="menuitem" onClick={run(onDownloadPdf)}><Icon n="down" size={18} />Descargar PDF</button>
+        <button type="button" role="menuitemcheckbox" aria-checked={recipe.favorite} onClick={run(onToggleFavorite)}>
+          <Icon n="star" size={18} />{recipe.favorite ? 'Quitar de favoritas' : 'Marcar favorita'}
+        </button>
+        <button type="button" role="menuitem" onClick={run(onDuplicate)}><Icon n="copy" size={18} />Duplicar receta</button>
+        <button type="button" role="menuitem" onClick={run(onOrder)}><Icon n="bag" size={18} />Crear pedido</button>
+      </div>}
+    </div>
+  )
+}
 
 export function Recetas({ data }: { data: Data }) {
   const open = useOpen()
@@ -62,7 +111,9 @@ export function Recetas({ data }: { data: Data }) {
         const a = r.priceCents != null ? analyzePrice(r.priceCents, c.unitCostCents, r.commissionPct) : null
         return (
           <div key={r.id} className="item recipe-row">
-            <input type="checkbox" aria-label={`Seleccionar ${r.name} para imprimir`} checked={selected.includes(r.id)} onChange={(e) => setSelected((ids) => e.target.checked ? [...new Set([...ids, r.id])] : ids.filter((id) => id !== r.id))} />
+            <label className="recipe-select">
+              <input type="checkbox" aria-label={`Seleccionar ${r.name} para imprimir`} checked={selected.includes(r.id)} onChange={(e) => setSelected((ids) => e.target.checked ? [...new Set([...ids, r.id])] : ids.filter((id) => id !== r.id))} />
+            </label>
             <button className="recipe-open" onClick={() => open({ k: 'recipe', v: r })}>
               {r.imageDataUrl && <img className="recipe-thumb" src={r.imageDataUrl} alt="" />}
               <div className="grow">
@@ -72,12 +123,9 @@ export function Recetas({ data }: { data: Data }) {
                 {!a && <div className="small" style={{ color: 'var(--warn)' }}>Sin precio de venta</div>}
               </div>
             </button>
-            <div className="row recipe-actions" style={{ gap: 2 }}>
-              <button className="btn small ghost" aria-label={`Descargar PDF de ${r.name}`} onClick={() => exportPdf([r])} disabled={exporting}><Icon n="down" size={18} /></button>
-              <button className="btn small ghost" aria-label={r.favorite ? 'Quitar de favoritas' : 'Marcar favorita'} onClick={() => db.recipes.update(r.id, { favorite: !r.favorite })} style={{ color: r.favorite ? 'var(--accent-strong)' : 'var(--text-2)' }}>{r.favorite ? '★' : '☆'}</button>
-              <button className="btn small ghost" aria-label="Duplicar receta" onClick={() => duplicateRecipe(r)}><Icon n="copy" size={18} /></button>
-              <button className="btn small ghost" aria-label="Crear pedido con esta receta" onClick={() => open({ k: 'order', recipeId: r.id })}><Icon n="bag" size={18} /></button>
-            </div>
+            <RecipeActions recipe={r} onDownloadPdf={() => exportPdf([r])}
+              onToggleFavorite={() => { void db.recipes.update(r.id, { favorite: !r.favorite }) }}
+              onDuplicate={() => { void duplicateRecipe(r) }} onOrder={() => open({ k: 'order', recipeId: r.id })} />
           </div>
         )
       })}
