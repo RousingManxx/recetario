@@ -348,7 +348,7 @@ export function RecipeForm({ recipe, data, composing = false, onClose }: { recip
           </div>
         )}
 
-        <div className="card stack" style={{ position: 'sticky', bottom: -8, background: 'var(--surface-2)' }}>
+        <div className="card stack recipe-cost-summary">
           {unitErr && <div className="banner bad">{unitErr}</div>}
           {cost.missing.length > 0 && <div className="banner bad">Hay ingredientes que ya no existen.</div>}
           {cost.missingRecipes.length > 0 && <div className="banner bad">Hay recetas componentes que ya no existen.</div>}

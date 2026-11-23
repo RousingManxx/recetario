@@ -35,10 +35,11 @@ export function recipePdf(recipes: Recipe[], context: RecipePdfContext): Uint8Ar
     if (recipe.description) pdf.paragraph(recipe.description, { size: 10, color: C.muted, gap: 10 })
 
     if (recipe.imageDataUrl) {
-      pdf.ensure(174)
-      pdf.rect(M, pdf.y, CONTENT_WIDTH, 164, C.head)
-      pdf.image(recipe.imageDataUrl, M + 8, pdf.y + 8, CONTENT_WIDTH - 16, 148)
-      pdf.y += 176
+      pdf.ensure(224)
+      pdf.rect(M, pdf.y, CONTENT_WIDTH, 214, C.head)
+      pdf.rect(M + 8, pdf.y + 8, CONTENT_WIDTH - 16, 198, C.white)
+      pdf.image(recipe.imageDataUrl, M + 14, pdf.y + 14, CONTENT_WIDTH - 28, 186)
+      pdf.y += 226
     }
 
     const facts = [
@@ -63,11 +64,14 @@ export function recipePdf(recipes: Recipe[], context: RecipePdfContext): Uint8Ar
     }
     if (ingredients.length === 0) ingredients.push({ name: 'Sin ingredientes registrados', amount: '' })
     for (const item of ingredients) {
-      pdf.ensure(22)
-      pdf.text(M + 4, pdf.y, item.name, { size: 9 })
+      const nameLines = pdf.wrap(item.name, CONTENT_WIDTH - 120, 9)
+      const rowHeight = Math.max(19, nameLines.length * 12 + 6)
+      pdf.ensure(rowHeight + 2)
+      pdf.rect(M, pdf.y - 3, 2, rowHeight - 2, C.sales)
+      nameLines.forEach((line, lineIndex) => pdf.text(M + 8, pdf.y + lineIndex * 12, line, { size: 9 }))
       pdf.text(PW - M - 4, pdf.y, item.amount, { size: 9, color: C.muted, align: 'r' })
-      pdf.line(M, pdf.y + 7, PW - M, pdf.y + 7)
-      pdf.y += 18
+      pdf.line(M + 6, pdf.y + rowHeight - 2, PW - M, pdf.y + rowHeight - 2)
+      pdf.y += rowHeight
     }
     pdf.y += 10
 
