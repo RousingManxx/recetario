@@ -120,6 +120,11 @@ a { color: var(--accent-strong); }
 .calendar-date { display: block; margin-bottom: 3px; font-size: 0.8rem; font-weight: 600; }
 .calendar-order { display: block; width: 100%; overflow: hidden; padding: 3px 4px; margin: 2px 0; border: 0; border-radius: 4px; background: var(--surface-2); color: var(--text); text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 0.68rem; cursor: pointer; }
 .calendar-order:hover { background: var(--accent-soft); }
+.calendar-order.status-cotizacion { color: var(--text-2); }
+.calendar-order.status-confirmado, .calendar-order.status-preparacion { background: var(--warn-soft); color: var(--warn); }
+.calendar-order.status-listo { background: var(--accent-soft); color: var(--accent-strong); }
+.calendar-order.status-entregado { background: var(--ok-soft); color: var(--ok); }
+.calendar-order.status-cancelado { background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: var(--s4); gap: var(--s3); }
 .stat { padding: var(--s4); border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); }
 .stat .v { font-family: var(--serif); font-size: 1.45rem; font-weight: 600; line-height: 1.15; margin-top: 2px; }

@@ -66,11 +66,16 @@ export function Pedidos({ data }: { data: Data }) {
   }).sort((a, b) => b.deliveryAt.localeCompare(a.deliveryAt))
 
   const agenda = currentOrders.filter((o) => ['confirmado', 'preparacion', 'listo'].includes(o.status)).sort((a, b) => a.deliveryAt.localeCompare(b.deliveryAt))
+  const calendarOrders = [...currentOrders].sort((a, b) => a.deliveryAt.localeCompare(b.deliveryAt))
   const byDay = new Map<string, Order[]>()
+  const calendarByDay = new Map<string, Order[]>()
   for (const o of agenda) { const k = o.deliveryAt.slice(0, 10); byDay.set(k, [...(byDay.get(k) ?? []), o]) }
+  for (const o of calendarOrders) { const k = o.deliveryAt.slice(0, 10); calendarByDay.set(k, [...(calendarByDay.get(k) ?? []), o]) }
   const monthStart = new Date(agendaMonth.getFullYear(), agendaMonth.getMonth(), 1)
   const monthDays = new Date(agendaMonth.getFullYear(), agendaMonth.getMonth() + 1, 0).getDate()
   const firstDayOffset = (monthStart.getDay() + 6) % 7
+  const monthPrefix = `${agendaMonth.getFullYear()}-${String(agendaMonth.getMonth() + 1).padStart(2, '0')}`
+  const calendarMonthOrders = calendarOrders.filter((o) => o.deliveryAt.slice(0, 7) === monthPrefix)
   const calendarDays = Array.from({ length: Math.ceil((firstDayOffset + monthDays) / 7) * 7 }, (_, i) => {
     const day = i - firstDayOffset + 1
     return day > 0 && day <= monthDays ? `${agendaMonth.getFullYear()}-${String(agendaMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : ''
@@ -123,13 +128,14 @@ export function Pedidos({ data }: { data: Data }) {
                 {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => <div key={day} className="calendar-weekday" role="columnheader">{day}</div>)}
                 {calendarDays.map((day, i) => (
                   <div key={day || `empty-${i}`} className={`calendar-day${day === today ? ' today' : ''}`} role="gridcell" aria-label={day ? new Date(`${day}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) : undefined}>
-                    {day && <><span className="calendar-date">{Number(day.slice(-2))}</span>{(byDay.get(day) ?? []).map((o) => (
-                      <button key={o.id} className="calendar-order" title={`${o.customerName} · ${fmtDateTime(o.deliveryAt)}`} onClick={() => open({ k: 'order', v: o })}>{o.customerName}</button>
+                    {day && <><span className="calendar-date">{Number(day.slice(-2))}</span>{(calendarByDay.get(day) ?? []).map((o) => (
+                      <button key={o.id} className={`calendar-order status-${o.status}`} title={`${o.customerName} · ${STATUS_LABEL[o.status]} · ${fmtDateTime(o.deliveryAt)}`}
+                        aria-label={`${o.customerName} · ${STATUS_LABEL[o.status]} · ${fmtDateTime(o.deliveryAt)}`} onClick={() => open({ k: 'order', v: o })}>{o.customerName}</button>
                     ))}</>}
                   </div>
                 ))}
               </div>
-              {agenda.length === 0 && <p className="small muted">No hay entregas pendientes este mes.</p>}
+              {calendarMonthOrders.length === 0 && <p className="small muted">No hay pedidos este mes.</p>}
             </section>
           )}
         </div>
