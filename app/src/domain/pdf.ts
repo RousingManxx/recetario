@@ -65,6 +65,7 @@ export class Pdf {
   newPage() { this.cur = []; this.pages.push(this.cur); this.pageImages.set(this.cur, new Set()); this.y = M }
   ensure(h: number) { if (this.y + h > PH - M - 14) this.newPage() }
   /** y en coordenadas de arriba hacia abajo. */
+  measureText(s: string, size: number, bold = false) { return widthOf(s, size, bold) }
   text(x: number, y: number, s: string, o: { size?: number; bold?: boolean; color?: RGB; align?: 'l' | 'r' | 'c' } = {}) {
     const size = o.size ?? 10, bold = !!o.bold
     const w = widthOf(s, size, bold)
@@ -75,6 +76,12 @@ export class Pdf {
   rect(x: number, y: number, w: number, h: number, fill: RGB) {
     if (w <= 0 || h <= 0) return
     this.cur.push(`${col(fill)} rg ${num(x)} ${num(PH - y - h)} ${num(w)} ${num(h)} re f`)
+  }
+  roundRect(x: number, y: number, w: number, h: number, r: number, fill: RGB) {
+    if (w <= 0 || h <= 0) return
+    const radius = Math.min(r, w / 2, h / 2), k = radius * 0.55228475
+    const top = PH - y - h, bottom = PH - y
+    this.cur.push(`${col(fill)} rg ${num(x + radius)} ${num(bottom)} m ${num(x + w - radius)} ${num(bottom)} l ${num(x + w - radius + k)} ${num(bottom)} ${num(x + w)} ${num(bottom - radius + k)} ${num(x + w)} ${num(bottom - radius)} c ${num(x + w)} ${num(top + radius)} l ${num(x + w)} ${num(top + radius - k)} ${num(x + w - radius + k)} ${num(top)} ${num(x + w - radius)} ${num(top)} c ${num(x + radius)} ${num(top)} l ${num(x + radius - k)} ${num(top)} ${num(x)} ${num(top + radius - k)} ${num(x)} ${num(top + radius)} c ${num(x)} ${num(bottom - radius)} l ${num(x)} ${num(bottom - radius + k)} ${num(x + radius - k)} ${num(bottom)} ${num(x + radius)} ${num(bottom)} c h f`)
   }
   line(x1: number, y1: number, x2: number, y2: number, c: RGB = C.line, w = 0.6) {
     this.cur.push(`${col(c)} RG ${w} w ${num(x1)} ${num(PH - y1)} m ${num(x2)} ${num(PH - y2)} l S`)
@@ -89,17 +96,25 @@ export class Pdf {
     for (let d = -h; d < w; d += 3.5) this.cur.push(`${num(x + d)} ${num(PH - y - h)} m ${num(x + d + h)} ${num(PH - y)} l S`)
     this.cur.push('Q')
   }
-  image(dataUrl: string, x: number, y: number, boxWidth: number, boxHeight: number) {
+  private readImage(dataUrl: string) {
     const match = /^data:image\/jpeg;base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl)
     if (!match) throw new Error('La foto debe estar en formato JPEG para incluirla en el PDF.')
-    const binary = atob(match[1])
-    const data = Uint8Array.from(binary, (char) => char.charCodeAt(0))
     let image = this.imageBySource.get(dataUrl)
     if (!image) {
+      const binary = atob(match[1])
+      const data = Uint8Array.from(binary, (char) => char.charCodeAt(0))
       const dimensions = jpegDimensions(data)
       image = { name: `Im${this.images.length + 1}`, data, ...dimensions }
       this.images.push(image); this.imageBySource.set(dataUrl, image)
     }
+    return image
+  }
+  imageDimensions(dataUrl: string) {
+    const { width, height } = this.readImage(dataUrl)
+    return { width, height }
+  }
+  image(dataUrl: string, x: number, y: number, boxWidth: number, boxHeight: number) {
+    const image = this.readImage(dataUrl)
     this.pageImages.get(this.cur)!.add(image.name)
     const scale = Math.min(boxWidth / image.width, boxHeight / image.height)
     const width = image.width * scale, height = image.height * scale

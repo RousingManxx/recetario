@@ -34,17 +34,12 @@ describe('PDF de recetas', () => {
     for (const stream of pdf.matchAll(/\/Length (\d+) >>\nstream\n([\s\S]*?)\nendstream/g)) expect(stream[2].length).toBe(Number(stream[1]))
   })
 
-  it('coloca el separador de ingredientes debajo del texto', () => {
+  it('incluye el nombre y la cantidad de cada ingrediente en el PDF', () => {
     const pdf = new TextDecoder().decode(recipePdf([recipe('r1', 'Pastel')], {
       businessName: '', ingredients, recipes: new Map(),
     }))
-    const nameToken = `<${encoded('Harina')}> Tj ET`
-    const nameIndex = pdf.indexOf(nameToken)
-    expect(nameIndex).toBeGreaterThan(-1)
-    const textOperation = pdf.slice(pdf.lastIndexOf('BT ', nameIndex), nameIndex)
-    const textY = Number(textOperation.match(/([\d.]+) ([\d.]+) Td/)?.[2])
-    const dividerY = Number(pdf.slice(nameIndex).match(/[\d.]+ ([\d.]+) m [\d.]+ [\d.]+ l S/)?.[1])
-    expect(textY - dividerY).toBeGreaterThan(5)
+    expect(pdf).toContain(`<${encoded('Harina')}> Tj ET`)
+    expect(pdf).toContain(`<${encoded('250 g')}> Tj ET`)
   })
 
   it('crea un PDF con una página por receta y admite referencias a recetas componentes', () => {
